@@ -97,19 +97,88 @@ export function TeamForm({ team, members: initial }: { team?: Team; members?: Me
     if (!pdf && (!team?.pdf_path || removePdf)) return toast.error("Project PDF is required");
     setBusy(true);
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUser = authData?.user;
+
+      if (!currentUser) {
+        throw new Error("You must be signed in with your administrator account (TeamInoSap26@gmail.com) to save teams.");
+      }
+
+      // Synchronize first admin status in database prior to mutations
+      try {
+        await supabase.rpc("claim_first_admin");
+      } catch (claimErr) {
+        console.warn("claim_first_admin sync:", claimErr);
+      }
+
       const id = team?.id ?? crypto.randomUUID();
       let path = team?.pdf_path ?? null;
       let text = team?.pdf_text ?? "";
+
       if (pdf) {
         await checkPdf(pdf);
-        path = `${id}/${Date.now()}.pdf`;
-        const { error: up } = await supabase.storage.from("project-pdfs").upload(path, pdf, { contentType: "application/pdf" });
-        if (up) throw up;
-        try { text = await extractPdfText(pdf); } catch { toast.warning("PDF stored, but its text could not be extracted"); }
+
+        // 1. Extract text first for evaluation engine
+        try {
+          text = await extractPdfText(pdf);
+        } catch (extractErr) {
+          console.warn("PDF text extraction warning:", extractErr);
+          toast.warning("PDF uploaded, but full text could not be extracted");
+        }
+
+        // 2. Upload to Supabase Storage project-pdfs bucket
+        const uploadPath = `${id}/${Date.now()}.pdf`;
+        const { error: up } = await supabase.storage
+          .from("project-pdfs")
+          .upload(uploadPath, pdf, { contentType: "application/pdf", upsert: true });
+
+        if (up) {
+          console.error("Storage upload error:", up);
+          if (up.message?.toLowerCase().includes("row-level security")) {
+            throw new Error("Storage RLS policy error: Your session is not authorized to upload project PDFs. Please ensure you are signed in as TeamInoSap26@gmail.com.");
+          }
+          if (up.message?.toLowerCase().includes("bucket not found") || (up as any).statusCode === "404" || (up as any).code === "NoSuchBucket") {
+            throw new Error("Storage configuration error: Bucket 'project-pdfs' does not exist in Supabase Storage. Please apply migration 0002.");
+          }
+          throw new Error(`PDF upload failed: ${up.message}`);
+        }
+
+        path = uploadPath;
       }
+
       const payload = { ...parsed.data, id, pdf_path: path, pdf_text: text, updated_at: new Date().toISOString() };
-      
-      // Immediately write to persistent store so data is NEVER lost
+      const validMembers = members.filter((m) => m.name.trim());
+
+      // Persist to Supabase Database
+      const { error: teamError } = team
+        ? await supabase.from("teams").update(payload as any).eq("id", team.id)
+        : await supabase.from("teams").insert(payload as any);
+
+      if (teamError) {
+        console.error("Supabase team sync error:", teamError);
+        if (teamError.message?.toLowerCase().includes("row-level security")) {
+          throw new Error("Database RLS error: Only TeamInoSap26@gmail.com is authorized to add or edit teams. Please verify your administrator session.");
+        }
+        throw new Error(`Failed to save team: ${teamError.message}`);
+      }
+
+      if (pdf && team?.pdf_path && team.pdf_path !== path) {
+        await supabase.storage.from("project-pdfs").remove([team.pdf_path]).catch(() => {});
+      }
+
+      await supabase.from("team_members").delete().eq("team_id", id);
+      const ms = validMembers.map((m, i) => ({
+        team_id: id,
+        name: m.name.trim(),
+        email: m.email.trim() || null,
+        position: i,
+      }));
+      if (ms.length) {
+        const { error: memErr } = await supabase.from("team_members").insert(ms);
+        if (memErr) console.warn("Team members insert:", memErr.message);
+      }
+
+      // Update backup local storage vault only after successful database mutation
       upsertPersistentTeam({
         id,
         name: f.name,
@@ -126,63 +195,16 @@ export function TeamForm({ team, members: initial }: { team?: Team; members?: Me
         remarks: team?.remarks ?? null,
         created_at: team?.created_at ?? new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        aiFinal: team?.aiFinal ?? null,
-        approvedFinal: team?.approvedFinal ?? null,
-        officialFinal: team?.officialFinal ?? null,
-        missing: team?.missing ?? ["pdf", "github", "website"],
-        overall: team?.overall ?? "pending",
-        evals: team?.evals ?? {},
+        aiFinal: (team as any)?.aiFinal ?? null,
+        approvedFinal: (team as any)?.approvedFinal ?? null,
+        officialFinal: (team as any)?.officialFinal ?? null,
+        missing: (team as any)?.missing ?? ["pdf", "github", "website"],
+        overall: (team as any)?.overall ?? "pending",
+        evals: (team as any)?.evals ?? {},
       });
-      const validMembers = members.filter((m) => m.name.trim());
       savePersistentMembers(id, validMembers);
 
-      try {
-        const { data: saved, error } = team
-          ? await supabase.from("teams").update(payload as any).eq("id", team.id).select().single()
-          : await supabase.from("teams").insert(payload as any).select().single();
-        if (error) console.warn("Supabase team sync:", error.message);
-        if (pdf) {
-          if (team?.pdf_path) await supabase.storage.from("project-pdfs").remove([team.pdf_path]);
-          // Automatically run evaluation on PDF upload
-          try {
-            await evaluateSingleTeam(
-              {
-                id,
-                name: f.name,
-                email: f.email,
-                project_title: f.project_title,
-                project_description: f.project_description,
-                github_url: f.github_url,
-                website_url: f.website_url,
-                pdf_path: path,
-                pdf_text: text,
-                final_status: team?.final_status ?? "pending",
-                final_override: team?.final_override ?? null,
-                override_reason: team?.override_reason ?? null,
-                remarks: team?.remarks ?? null,
-                created_at: team?.created_at ?? new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                aiFinal: null,
-                approvedFinal: null,
-                officialFinal: null,
-                missing: ["pdf", "github", "website"],
-                overall: "processing",
-                evals: team?.evals ?? {},
-              } as any,
-              ["pdf"],
-              { forceRerun: true }
-            );
-          } catch (evalErr) {
-            console.warn("Auto-evaluation on PDF upload:", evalErr);
-          }
-        }
-        await supabase.from("team_members").delete().eq("team_id", id);
-        const ms = validMembers.map((m, i) => ({ team_id: id, name: m.name.trim(), email: m.email.trim() || null, position: i }));
-        if (ms.length) await supabase.from("team_members").insert(ms);
-        await logActivity(team ? "Edited team" : "Added team", f.name);
-      } catch (cloudErr) {
-        console.warn("Could not sync to cloud database, team saved locally in persistent vault:", cloudErr);
-      }
+      await logActivity(team ? "Edited team" : "Added team", f.name);
 
       qc.invalidateQueries();
       toast.success(team ? "Team updated" : "Team added");

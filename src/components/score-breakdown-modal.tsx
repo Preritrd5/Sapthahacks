@@ -1,15 +1,19 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { AnimatedProgress } from "@/components/ui/animated-progress";
 import { StatusBadge, fmt } from "@/components/page-header";
 import { type TeamRow } from "@/lib/queries";
 import { COMPONENTS, COMPONENT_LABEL, type Component } from "@/lib/scoring";
 import { DEFAULT_CRITERIA_MAP, generateDefaultCriteriaScores, type DetailedCriterionScore } from "@/lib/evaluation-engine";
 import { updatePersistentTeam } from "@/lib/team-store";
+import { supabase } from "@/integrations/supabase/client";
 import { FileText, Github, Globe, CheckCircle2, ShieldCheck, Cpu, Calendar, Sparkles, Zap } from "lucide-react";
 
 interface Props {
@@ -20,11 +24,27 @@ interface Props {
 
 export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
   const qc = useQueryClient();
+  const shouldReduceMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<Component>("pdf");
+
+  const currentEval = team?.evals?.[activeTab];
+  const { data: dbCriterionScores } = useQuery({
+    queryKey: ["criterion_scores", currentEval?.id],
+    enabled: !!currentEval?.id && isOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("criterion_scores")
+        .select("*")
+        .eq("evaluation_id", currentEval!.id)
+        .order("position");
+      if (error || !data || data.length === 0) return null;
+      return data;
+    },
+  });
 
   if (!team) return null;
 
-  const handleFillDefaultCriteria = () => {
+  const handleFillDefaultCriteria = async () => {
     const p = 84;
     const g = 88;
     const w = 85;
@@ -37,31 +57,64 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
       { c: "website", score: w },
     ];
 
-    comps.forEach(({ c, score }) => {
-      const evalId = updatedEvals[c]?.id || `eval-${team.id}-${c}`;
-      const critScores = generateDefaultCriteriaScores(team.id, c, score);
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(`innovedge_criterion_scores_${evalId}`, JSON.stringify(critScores));
-        } catch {}
-      }
+    try {
+      for (const { c, score } of comps) {
+        const evalId = updatedEvals[c]?.id || `eval-${team.id}-${c}`;
+        const critScores = generateDefaultCriteriaScores(team.id, c, score);
 
-      updatedEvals[c] = {
-        ...(updatedEvals[c] || {
-          id: evalId,
+        updatedEvals[c] = {
+          ...(updatedEvals[c] || {
+            id: evalId,
+            team_id: team.id,
+            component: c,
+            created_at: new Date().toISOString(),
+            max_score: 100,
+          }),
+          status: "completed",
+          ai_score: score,
+          final_score: score,
+          summary: `Benchmark evaluation criteria populated (${score}/100)`,
+          confidence: 0.95,
+          updated_at: new Date().toISOString(),
+        } as any;
+
+        const { data: savedEval } = await supabase.from("evaluations").upsert({
           team_id: team.id,
           component: c,
-          created_at: new Date().toISOString(),
+          status: "completed",
+          final_score: score,
+          ai_score: score,
           max_score: 100,
-        }),
-        status: "completed",
-        ai_score: score,
-        final_score: score,
-        summary: `Benchmark evaluation criteria populated (${score}/100)`,
-        confidence: 0.95,
+          confidence: 0.95,
+          summary: `Benchmark evaluation criteria populated (${score}/100)`,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "team_id,component" }).select().single();
+
+        if (savedEval?.id) {
+          await supabase.from("criterion_scores").delete().eq("evaluation_id", savedEval.id);
+          await supabase.from("criterion_scores").insert(
+            critScores.map((crit, idx) => ({
+              evaluation_id: savedEval.id,
+              criterion_name: crit.criterion_name,
+              max_marks: crit.max_marks,
+              position: idx + 1,
+              ai_marks: crit.ai_marks,
+              admin_marks: crit.ai_marks,
+              ai_explanation: crit.ai_explanation,
+              ai_evidence: crit.ai_evidence,
+              confidence: crit.confidence,
+            }))
+          );
+        }
+      }
+
+      await supabase.from("teams").update({
+        final_override: finalScore,
         updated_at: new Date().toISOString(),
-      };
-    });
+      }).eq("id", team.id);
+    } catch (err) {
+      console.warn("Could not sync benchmark criteria to Supabase:", err);
+    }
 
     updatePersistentTeam(team.id, {
       evals: updatedEvals,
@@ -75,19 +128,22 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
     toast.success(`Populated default criteria for ${team.name} (${finalScore}/100)!`);
   };
 
-  // Load criterion scores from local storage cache if available, or generate from defaults
+  // Load criterion scores from authoritative Supabase query or proportional fallback
   const getCriteriaForComponent = (c: Component): DetailedCriterionScore[] => {
-    const evalObj = team.evals?.[c];
-    if (typeof window !== "undefined" && evalObj?.id) {
-      try {
-        const cached = localStorage.getItem(`innovedge_criterion_scores_${evalObj.id}`);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch {}
+    if (c === activeTab && dbCriterionScores && dbCriterionScores.length > 0) {
+      return dbCriterionScores.map((r) => ({
+        criterion_id: r.id,
+        criterion_name: r.criterion_name,
+        max_marks: Number(r.max_marks),
+        ai_marks: Number(r.admin_marks ?? r.ai_marks ?? 0),
+        ai_explanation: r.admin_reason || r.ai_explanation || "",
+        ai_evidence: r.ai_evidence || "",
+        confidence: Number(r.confidence ?? 0.92),
+        position: r.position,
+      }));
     }
 
+    const evalObj = team.evals?.[c];
     // Proportional breakdown from defaults
     const scoreVal = evalObj?.final_score != null ? Number(evalObj.final_score) : 70;
     const factor = scoreVal / 100;
@@ -112,7 +168,7 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-6">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-6 rounded-3xl border border-border/70 bg-card/95 backdrop-blur-2xl">
         <DialogHeader className="shrink-0 pb-3 border-b border-border/40">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -125,11 +181,12 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
               </p>
             </div>
 
-            {/* Overall Score Badge */}
+            {/* Overall Score Badge with Animated Number */}
             <div className="text-right shrink-0 rounded-xl bg-primary/10 border border-primary/20 px-3.5 py-2">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Overall Score</div>
-              <div className="font-mono text-xl font-black text-primary">
-                {fmt(team.officialFinal ?? team.aiFinal)} <span className="text-xs font-normal text-muted-foreground">/ 100</span>
+              <div className="font-mono text-xl font-black text-primary flex items-baseline justify-end">
+                <AnimatedNumber value={team.officialFinal ?? team.aiFinal} precision={1} />
+                <span className="text-xs font-normal text-muted-foreground ml-1">/ 100</span>
               </div>
             </div>
           </div>
@@ -141,7 +198,7 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
                 <FileText className="size-3.5 text-rose-500" /> PDF Deck
               </span>
               <span className={`font-mono font-bold ${getScoreColor(team.evals?.pdf?.final_score)}`}>
-                {fmt(team.evals?.pdf?.final_score)}/100
+                <AnimatedNumber value={team.evals?.pdf?.final_score} precision={0} />/100
               </span>
             </div>
 
@@ -150,7 +207,7 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
                 <Github className="size-3.5 text-sky-500" /> GitHub Code
               </span>
               <span className={`font-mono font-bold ${getScoreColor(team.evals?.github?.final_score)}`}>
-                {fmt(team.evals?.github?.final_score)}/100
+                <AnimatedNumber value={team.evals?.github?.final_score} precision={0} />/100
               </span>
             </div>
 
@@ -159,12 +216,12 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
                 <Globe className="size-3.5 text-emerald-500" /> Website
               </span>
               <span className={`font-mono font-bold ${getScoreColor(team.evals?.website?.final_score)}`}>
-                {fmt(team.evals?.website?.final_score)}/100
+                <AnimatedNumber value={team.evals?.website?.final_score} precision={0} />/100
               </span>
             </div>
           </div>
 
-          {/* Quick Dummy Fill Action */}
+          {/* Quick Benchmark Action */}
           <div className="flex items-center justify-between pt-2">
             <span className="text-[11px] text-muted-foreground">Preview & test evaluation rubrics:</span>
             <Button
@@ -173,13 +230,13 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
               onClick={handleFillDefaultCriteria}
               className="text-xs h-7 gap-1.5 border-primary/30 text-primary hover:bg-primary/10 font-medium"
             >
-              <Zap className="size-3" /> Fill Default Dummy Criteria (85%)
+              <Zap className="size-3" /> Fill Default Benchmark Criteria (85%)
             </Button>
           </div>
         </DialogHeader>
 
         {/* Tabbed Criteria Breakdown */}
-        <div className="flex-1 overflow-y-auto pt-3">
+        <div className="flex-1 overflow-y-auto pt-3 pr-1">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Component)} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-3">
               <TabsTrigger value="pdf" className="text-xs flex items-center gap-1.5">
@@ -201,7 +258,7 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
                 <TabsContent key={comp} value={comp} className="space-y-3 mt-0">
                   {/* Component summary banner */}
                   {evalObj?.summary && (
-                    <div className="rounded-xl bg-card border border-border/60 p-3 text-xs">
+                    <div className="rounded-xl bg-card border border-border/60 p-3.5 text-xs">
                       <div className="flex items-center gap-1.5 font-semibold text-primary mb-1">
                         <Sparkles className="size-3.5" /> AI Qualitative Assessment Summary
                       </div>
@@ -211,11 +268,13 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
                           <Cpu className="size-3" /> Model: {evalObj.model || "Gemini 3.1 Flash Lite"}
                         </span>
                         <span className="flex items-center gap-1">
-                          <ShieldCheck className="size-3 text-emerald-500" /> Confidence: {Math.round((Number(evalObj.confidence) || 0.92) * 100)}%
+                          <ShieldCheck className="size-3 text-emerald-500" /> Confidence:{" "}
+                          {Math.round((Number(evalObj.confidence) || 0.92) * 100)}%
                         </span>
                         {evalObj.updated_at && (
                           <span className="flex items-center gap-1">
-                            <Calendar className="size-3" /> Evaluated: {new Date(evalObj.updated_at).toLocaleString()}
+                            <Calendar className="size-3" /> Evaluated:{" "}
+                            {new Date(evalObj.updated_at).toLocaleDateString()}
                           </span>
                         )}
                       </div>
@@ -223,35 +282,43 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
                   )}
 
                   {/* Criteria Cards */}
-                  <div className="space-y-2">
-                    {crits.map((crit) => (
-                      <div
-                        key={crit.criterion_id}
-                        className="rounded-xl border border-border/50 bg-card/40 p-3 hover:bg-card/70 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <span className="text-xs font-semibold text-foreground">
-                              {crit.position}. {crit.criterion_name}
-                            </span>
-                            <p className="text-xs text-muted-foreground mt-0.5">{crit.ai_explanation}</p>
+                  <div className="space-y-2.5">
+                    {crits.map((crit, index) => {
+                      const pct = (crit.ai_marks / crit.max_marks) * 100;
+                      return (
+                        <div
+                          key={crit.criterion_id}
+                          className="rounded-xl border border-border/50 bg-card/50 p-3 hover:bg-card/80 transition-colors space-y-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <span className="text-xs font-semibold text-foreground">
+                                {crit.position}. {crit.criterion_name}
+                              </span>
+                              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                {crit.ai_explanation}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="font-mono text-sm font-bold text-primary">
+                                <AnimatedNumber value={crit.ai_marks} precision={1} />
+                              </span>
+                              <span className="font-mono text-xs text-muted-foreground"> / {crit.max_marks}</span>
+                            </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <span className="font-mono text-sm font-bold text-primary">
-                              {crit.ai_marks}
-                            </span>
-                            <span className="font-mono text-xs text-muted-foreground"> / {crit.max_marks}</span>
-                          </div>
-                        </div>
 
-                        {crit.ai_evidence && (
-                          <div className="mt-2 rounded-lg bg-muted/40 p-2 text-[11px] text-muted-foreground flex items-start gap-1.5 border border-border/30">
-                            <span className="font-semibold text-foreground shrink-0">Evidence:</span>
-                            <span className="italic">{crit.ai_evidence}</span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          {/* Criterion Progress Meter */}
+                          <AnimatedProgress value={pct} size="sm" variant="primary" />
+
+                          {crit.ai_evidence && (
+                            <div className="mt-1.5 rounded-lg bg-muted/40 p-2 text-[11px] text-muted-foreground flex items-start gap-1.5 border border-border/30">
+                              <span className="font-semibold text-foreground shrink-0">Evidence:</span>
+                              <span className="italic leading-relaxed">{crit.ai_evidence}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </TabsContent>
               );
@@ -260,7 +327,7 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
         </div>
 
         <div className="shrink-0 pt-3 border-t border-border/40 flex justify-end">
-          <Button size="sm" variant="secondary" onClick={onClose}>
+          <Button size="sm" variant="secondary" onClick={onClose} className="text-xs">
             Close Breakdown
           </Button>
         </div>
@@ -268,4 +335,3 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
     </Dialog>
   );
 }
-

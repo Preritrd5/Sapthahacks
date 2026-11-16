@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/activity")({
   head: () => ({ meta: [{ property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }, { title: "Activity logs — Assessor" }, { name: "description", content: "Audit trail of admin actions." }, { property: "og:title", content: "Activity logs — Assessor" }, { property: "og:description", content: "Audit trail of admin actions." }] }),
@@ -11,9 +12,16 @@ export const Route = createFileRoute("/_authenticated/activity")({
 });
 
 function Activity() {
+  const { user } = useAuth();
   const [q, setQ] = useState("");
-  const logs = useQuery({ queryKey: ["activity"], queryFn: async () => (await supabase.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(500)).data ?? [] });
-  const overrides = useQuery({ queryKey: ["overrides"], queryFn: async () => (await supabase.from("admin_score_overrides").select("*, teams(name)").order("created_at", { ascending: false }).limit(300)).data ?? [] });
+  const logs = useQuery({
+    queryKey: ["activity", user?.id],
+    queryFn: async () => (await supabase.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(500)).data ?? [],
+  });
+  const overrides = useQuery({
+    queryKey: ["overrides", user?.id],
+    queryFn: async () => (await supabase.from("admin_score_overrides").select("*, teams(name)").order("created_at", { ascending: false }).limit(300)).data ?? [],
+  });
   const list = (logs.data ?? []).filter((l) => !q || `${l.action} ${l.details} ${l.actor_email}`.toLowerCase().includes(q.toLowerCase()));
   return (
     <>

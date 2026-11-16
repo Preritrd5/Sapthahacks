@@ -32,6 +32,8 @@ import { logActivity } from "@/lib/db";
 import { runFastPlagiarismCheck, applyPlagiarismDeduction, type PlagiarismResult } from "@/lib/plagiarism";
 import { TeamReportCard } from "@/components/team-report-card";
 import { DeleteTeamModal } from "@/components/delete-team-modal";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
 
 export const Route = createFileRoute("/_authenticated/qualification")({
   head: () => ({
@@ -79,7 +81,7 @@ function QualificationPage() {
     teams.forEach((t) => {
       if (t.project_title) {
         const match = t.project_title.match(/^\[([^\]]+)\]/);
-        set.add(match ? match[1] : t.project_title);
+        set.add(match && match[1] ? match[1] : t.project_title);
       }
     });
     return Array.from(set);
@@ -230,66 +232,76 @@ function QualificationPage() {
 
   return (
     <>
-      <PageHeader
-        title="Team Qualification"
-        desc="Tick teams to shortlist them for the next round. Generate certified 1-page reports with watermark and run fast plagiarism audits."
-      >
-        <Button variant="outline" onClick={handleRunPlagiarism} className="gap-2">
-          <ShieldCheck className="size-4 text-primary" />
-          Run Plagiarism Check
-        </Button>
-        <Button variant="secondary" onClick={handleAutoQualifyTop} className="gap-1.5">
-          <Sparkles className="size-4 text-amber-500" />
-          Auto-Qualify (&ge;70%)
-        </Button>
-        <Button onClick={() => window.print()} className="gap-2">
-          <Printer className="size-4" />
-          Print Qualified List
-        </Button>
-      </PageHeader>
+      <FadeIn>
+        <PageHeader
+          title="Team Qualification"
+          desc="Tick teams to shortlist them for the next round. Generate certified 1-page reports with watermark and run fast plagiarism audits."
+        >
+          <Button variant="outline" onClick={handleRunPlagiarism} className="gap-2">
+            <ShieldCheck className="size-4 text-primary" />
+            Run Plagiarism Check
+          </Button>
+          <Button variant="secondary" onClick={handleAutoQualifyTop} className="gap-1.5">
+            <Sparkles className="size-4 text-amber-500" />
+            Auto-Qualify (&ge;70%)
+          </Button>
+          <Button onClick={() => window.print()} className="gap-2">
+            <Printer className="size-4" />
+            Print Qualified List
+          </Button>
+        </PageHeader>
+      </FadeIn>
 
       {/* Stats Cards Banner */}
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="glass-interactive rounded-2xl p-4 flex items-center gap-3">
+      <StaggerContainer className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StaggerItem className="glass-interactive rounded-2xl p-4 flex items-center gap-3">
           <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary font-bold">
-            {totalCount}
+            <AnimatedNumber value={totalCount} precision={0} />
           </div>
           <div className="min-w-0">
             <div className="text-xs text-muted-foreground font-medium uppercase truncate">Total Teams</div>
-            <div className="text-base sm:text-lg font-bold text-foreground truncate">{totalCount} Registered</div>
+            <div className="text-base sm:text-lg font-bold text-foreground truncate">
+              <AnimatedNumber value={totalCount} precision={0} /> Registered
+            </div>
           </div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass-interactive rounded-2xl p-4 flex items-center gap-3 border-emerald-500/20 bg-emerald-500/[0.03]">
+        <StaggerItem className="glass-interactive rounded-2xl p-4 flex items-center gap-3 border-emerald-500/20 bg-emerald-500/[0.03]">
           <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 font-bold">
             <CheckCircle2 className="size-5" />
           </div>
           <div className="min-w-0">
             <div className="text-xs text-muted-foreground font-medium uppercase truncate">Qualified</div>
-            <div className="text-base sm:text-lg font-bold text-emerald-600 truncate">{qualifiedCount} Shortlisted</div>
+            <div className="text-base sm:text-lg font-bold text-emerald-600 truncate">
+              <AnimatedNumber value={qualifiedCount} precision={0} /> Shortlisted
+            </div>
           </div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass-interactive rounded-2xl p-4 flex items-center gap-3 border-amber-500/20 bg-amber-500/[0.03]">
+        <StaggerItem className="glass-interactive rounded-2xl p-4 flex items-center gap-3 border-amber-500/20 bg-amber-500/[0.03]">
           <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600 font-bold">
-            {totalCount - qualifiedCount}
+            <AnimatedNumber value={totalCount - qualifiedCount} precision={0} />
           </div>
           <div className="min-w-0">
             <div className="text-xs text-muted-foreground font-medium uppercase truncate">Pending Review</div>
-            <div className="text-base sm:text-lg font-bold text-foreground truncate">{totalCount - qualifiedCount} Teams</div>
+            <div className="text-base sm:text-lg font-bold text-foreground truncate">
+              <AnimatedNumber value={totalCount - qualifiedCount} precision={0} /> Teams
+            </div>
           </div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass-interactive rounded-2xl p-4 flex items-center gap-3 border-rose-500/20 bg-rose-500/[0.03]">
+        <StaggerItem className="glass-interactive rounded-2xl p-4 flex items-center gap-3 border-rose-500/20 bg-rose-500/[0.03]">
           <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-600 font-bold">
             <AlertTriangle className="size-5" />
           </div>
           <div className="min-w-0">
             <div className="text-xs text-muted-foreground font-medium uppercase truncate">Plagiarism Flagged</div>
-            <div className="text-base sm:text-lg font-bold text-rose-600 truncate">{flaggedCount} Teams</div>
+            <div className="text-base sm:text-lg font-bold text-rose-600 truncate">
+              <AnimatedNumber value={flaggedCount} precision={0} /> Teams
+            </div>
           </div>
-        </div>
-      </div>
+        </StaggerItem>
+      </StaggerContainer>
 
       {/* Search, Filter & Sort Controls */}
       <div className="mb-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
@@ -429,22 +441,22 @@ function QualificationPage() {
 
                     {/* PDF Component */}
                     <td className="p-3 text-right font-mono text-xs">
-                      {t.evals.pdf?.final_score != null ? fmt(t.evals.pdf.final_score) : "—"}
+                      <AnimatedNumber value={t.evals?.pdf?.final_score} precision={1} />
                     </td>
 
                     {/* GitHub Component */}
                     <td className="p-3 text-right font-mono text-xs">
-                      {t.evals.github?.final_score != null ? fmt(t.evals.github.final_score) : "—"}
+                      <AnimatedNumber value={t.evals?.github?.final_score} precision={1} />
                     </td>
 
                     {/* Website Component */}
                     <td className="p-3 text-right font-mono text-xs">
-                      {t.evals.website?.final_score != null ? fmt(t.evals.website.final_score) : "—"}
+                      <AnimatedNumber value={t.evals?.website?.final_score} precision={1} />
                     </td>
 
                     {/* Final Score */}
                     <td className="p-3 text-right font-mono font-bold text-base text-foreground">
-                      {score != null ? fmt(score) : "—"}
+                      <AnimatedNumber value={score} precision={1} className={score && score >= 70 ? "text-emerald-500" : "text-foreground"} />
                     </td>
 
                     {/* Plagiarism Status */}
@@ -515,24 +527,14 @@ function QualificationPage() {
         onClose={() => setTeamToDelete(null)}
       />
 
-      {/* Modal Dialog for the 1-Page PDF Report */}
-      <Dialog open={!!reportTeam} onOpenChange={(open) => !open && setReportTeam(null)}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-4 md:p-6">
-          <DialogHeader className="no-print">
-            <DialogTitle className="flex items-center justify-between">
-              <span>Official INNOVEDGE Assessment Report</span>
-            </DialogTitle>
-          </DialogHeader>
-
-          {reportTeam && (
-            <TeamReportCard
-              team={reportTeam}
-              plagiarismScore={plagiarismMap.get(reportTeam.id)?.similarityScore ?? 0}
-              onClose={() => setReportTeam(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Official 1-Page Scorecard / Report Modal */}
+      <TeamReportCard
+        team={reportTeam}
+        isOpen={!!reportTeam}
+        onClose={() => setReportTeam(null)}
+        plagiarismScore={reportTeam ? (plagiarismMap.get(reportTeam.id)?.overallSimilarity ?? plagiarismMap.get(reportTeam.id)?.similarityScore) : undefined}
+        plagiarismResult={reportTeam ? plagiarismMap.get(reportTeam.id) : undefined}
+      />
     </>
   );
 }

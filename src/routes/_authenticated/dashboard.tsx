@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Users,
   ClipboardCheck,
@@ -32,14 +32,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { EvaluationProgressModal } from "@/components/evaluation-progress-modal";
 import { useTeamRows, useSettings, type TeamRow } from "@/lib/queries";
 import { COMPONENTS, COMPONENT_LABEL } from "@/lib/scoring";
-import { evaluateSingleTeam } from "@/lib/evaluation-engine";
+import { evaluateSingleTeam, type EvaluationProgress } from "@/lib/evaluation-engine";
 import { runComprehensivePlagiarismScan } from "@/lib/plagiarism";
 import { ScoreBreakdownModal } from "@/components/score-breakdown-modal";
 import { EditScoreModal } from "@/components/edit-score-modal";
 import { TeamReportCard } from "@/components/team-report-card";
 import { TeamSubmissionModal } from "@/components/team-submission-modal";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -56,9 +60,11 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
+  const { user } = useAuth();
   const qc = useQueryClient();
-  const rows = useTeamRows();
+  const rows = useTeamRows(user?.id);
   const settings = useSettings();
+  const shouldReduceMotion = useReducedMotion();
   const teams = rows.data ?? [];
 
   // Filter & Search states
@@ -68,6 +74,12 @@ function Dashboard() {
 
   // Track currently evaluating teams in local state
   const [evaluatingTeamIds, setEvaluatingTeamIds] = useState<Set<string>>(new Set());
+
+  // Live evaluation modal states
+  const [liveEvalTeam, setLiveEvalTeam] = useState<TeamRow | null>(null);
+  const [liveEvalProgress, setLiveEvalProgress] = useState<EvaluationProgress | null>(null);
+  const [showLiveEvalModal, setShowLiveEvalModal] = useState(false);
+  const [liveEvalError, setLiveEvalError] = useState<string | null>(null);
 
   // Modal targets
   const [breakdownTeam, setBreakdownTeam] = useState<TeamRow | null>(null);
@@ -96,13 +108,27 @@ function Dashboard() {
     if (evaluatingTeamIds.has(team.id)) return;
 
     setEvaluatingTeamIds((prev) => new Set(prev).add(team.id));
-    toast.info(`Evaluating "${team.name}" across PDF, GitHub code & website...`);
+    setLiveEvalTeam(team);
+    setLiveEvalError(null);
+    setShowLiveEvalModal(true);
+    setLiveEvalProgress({
+      teamId: team.id,
+      component: "pdf",
+      status: "processing",
+      progressPct: 15,
+      message: `Analyzing "${team.name}" across PDF deck, GitHub repository & deployed website...`,
+    });
 
     try {
-      await evaluateSingleTeam(team, [...COMPONENTS], { forceRerun });
+      const res = await evaluateSingleTeam(team, [...COMPONENTS], {
+        forceRerun,
+        onProgress: (p) => setLiveEvalProgress(p),
+      });
+      setLiveEvalTeam(res);
       toast.success(`Evaluation completed for "${team.name}"!`);
       qc.invalidateQueries();
     } catch (err: any) {
+      setLiveEvalError(err?.message || `Failed to evaluate "${team.name}"`);
       toast.error(err?.message || `Failed to evaluate "${team.name}"`);
     } finally {
       setEvaluatingTeamIds((prev) => {
@@ -153,75 +179,88 @@ function Dashboard() {
 
   return (
     <>
-      <PageHeader
-        title="Team Evaluation Dashboard"
-        desc={`Independent AI evaluations, score breakdowns, and moderation for ${totalTeams} teams.`}
-      >
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/criteria">
-            <ListChecks className="size-4 mr-1.5" /> Manage Criteria
-          </Link>
-        </Button>
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/reports">
-            <FileDown className="size-4 mr-1.5" /> Export Reports
-          </Link>
-        </Button>
-      </PageHeader>
+      <FadeIn>
+        <PageHeader
+          title="Team Evaluation Dashboard"
+          desc={`Independent AI evaluations, score breakdowns, and moderation for ${totalTeams} teams.`}
+        >
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/criteria">
+              <ListChecks className="size-4 mr-1.5" /> Manage Criteria
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/reports">
+              <FileDown className="size-4 mr-1.5" /> Export Reports
+            </Link>
+          </Button>
+        </PageHeader>
+      </FadeIn>
 
-      {/* Top InnovJudge Metric Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
-        <div className="glass rounded-2xl p-4">
+      {/* Top InnovJudge Metric Cards with Staggered Entrance */}
+      <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
+        <StaggerItem className="glass rounded-2xl p-4">
           <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
             <span>Total Teams</span>
             <Users className="size-4 text-primary" />
           </div>
-          <div className="mt-1 font-mono text-2xl font-bold">{totalTeams}</div>
+          <div className="mt-1 font-mono text-2xl font-bold">
+            <AnimatedNumber value={totalTeams} precision={0} />
+          </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">Registered hackathon teams</div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass rounded-2xl p-4 border-emerald-500/20 bg-emerald-500/5">
+        <StaggerItem className="glass rounded-2xl p-4 border-emerald-500/20 bg-emerald-500/5">
           <div className="text-[11px] font-semibold uppercase text-emerald-500 flex items-center justify-between">
             <span>Completed</span>
             <CheckCircle2 className="size-4 text-emerald-500" />
           </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-emerald-500">{completedTeams}</div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">{totalTeams ? Math.round((completedTeams / totalTeams) * 100) : 0}% fully evaluated</div>
-        </div>
+          <div className="mt-1 font-mono text-2xl font-bold text-emerald-500">
+            <AnimatedNumber value={completedTeams} precision={0} />
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            {totalTeams ? Math.round((completedTeams / totalTeams) * 100) : 0}% fully evaluated
+          </div>
+        </StaggerItem>
 
-        <div className="glass rounded-2xl p-4 border-amber-500/20 bg-amber-500/5">
+        <StaggerItem className="glass rounded-2xl p-4 border-amber-500/20 bg-amber-500/5">
           <div className="text-[11px] font-semibold uppercase text-amber-500 flex items-center justify-between">
             <span>Pending Evaluation</span>
             <Clock className="size-4 text-amber-500" />
           </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-amber-500">{pendingTeams}</div>
+          <div className="mt-1 font-mono text-2xl font-bold text-amber-500">
+            <AnimatedNumber value={pendingTeams} precision={0} />
+          </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">Awaiting manual trigger</div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass rounded-2xl p-4">
+        <StaggerItem className="glass rounded-2xl p-4">
           <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
             <span>Average Score</span>
             <Trophy className="size-4 text-primary" />
           </div>
           <div className="mt-1 font-mono text-2xl font-bold text-foreground">
-            {avgScore} <span className="text-xs font-normal text-muted-foreground">/ 100</span>
+            <AnimatedNumber value={avgScore} precision={1} />{" "}
+            <span className="text-xs font-normal text-muted-foreground">/ 100</span>
           </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">Across completed teams</div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass rounded-2xl p-4 border-rose-500/20 bg-rose-500/5">
+        <StaggerItem className="glass rounded-2xl p-4 border-rose-500/20 bg-rose-500/5">
           <div className="text-[11px] font-semibold uppercase text-rose-500 flex items-center justify-between">
             <span>Plagiarism Alerts</span>
             <ShieldAlert className="size-4 text-rose-500" />
           </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-rose-500">{flaggedTeams}</div>
+          <div className="mt-1 font-mono text-2xl font-bold text-rose-500">
+            <AnimatedNumber value={flaggedTeams} precision={0} />
+          </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">
             <Link to="/plagiarism" className="text-rose-500 underline hover:text-rose-600">
               Review in Plagiarism &rarr;
             </Link>
           </div>
-        </div>
-      </div>
+        </StaggerItem>
+      </StaggerContainer>
 
       {/* Filter and Search Bar */}
       <div className="mb-4 flex flex-col sm:flex-row gap-2">
@@ -365,28 +404,28 @@ function Dashboard() {
                     {/* PDF Deck Score */}
                     <td className="p-3.5 text-center font-mono">
                       <span className={getScoreColor(team.evals?.pdf?.final_score)}>
-                        {team.evals?.pdf?.final_score != null ? fmt(team.evals.pdf.final_score) : "—"}
+                        <AnimatedNumber value={team.evals?.pdf?.final_score} precision={1} />
                       </span>
                     </td>
 
                     {/* GitHub Code Score */}
                     <td className="p-3.5 text-center font-mono">
                       <span className={getScoreColor(team.evals?.github?.final_score)}>
-                        {team.evals?.github?.final_score != null ? fmt(team.evals.github.final_score) : "—"}
+                        <AnimatedNumber value={team.evals?.github?.final_score} precision={1} />
                       </span>
                     </td>
 
                     {/* Website Score */}
                     <td className="p-3.5 text-center font-mono">
                       <span className={getScoreColor(team.evals?.website?.final_score)}>
-                        {team.evals?.website?.final_score != null ? fmt(team.evals.website.final_score) : "—"}
+                        <AnimatedNumber value={team.evals?.website?.final_score} precision={1} />
                       </span>
                     </td>
 
                     {/* Overall Score */}
                     <td className="p-3.5 text-center">
                       <div className="font-mono text-base font-black text-primary">
-                        {fmt(team.officialFinal ?? team.aiFinal)}
+                        <AnimatedNumber value={team.officialFinal ?? team.aiFinal} precision={1} />
                       </div>
                       {team.final_override != null && (
                         <span className="text-[10px] text-amber-500 font-medium block">
@@ -397,23 +436,17 @@ function Dashboard() {
 
                     {/* Status Badge */}
                     <td className="p-3.5 text-center">
-                      {isCurrentlyEvaluating ? (
-                        <Badge className="bg-sky-500/20 text-sky-400 border-sky-500/30 animate-pulse text-xs">
-                          <Loader2 className="size-3 animate-spin mr-1" /> Evaluating
-                        </Badge>
-                      ) : isCompleted ? (
-                        <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 text-xs">
-                          <CheckCircle2 className="size-3 mr-1" /> Completed
-                        </Badge>
-                      ) : isFailed ? (
-                        <Badge variant="destructive" className="text-xs">
-                          <AlertTriangle className="size-3 mr-1" /> Failed
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-amber-500 border-amber-500/30 text-xs">
-                          <Clock className="size-3 mr-1" /> Pending
-                        </Badge>
-                      )}
+                      <StatusBadge
+                        status={
+                          isCurrentlyEvaluating
+                            ? "evaluating"
+                            : isCompleted
+                            ? "completed"
+                            : isFailed
+                            ? "failed"
+                            : "pending"
+                        }
+                      />
                     </td>
 
                     {/* Action Buttons */}
@@ -449,33 +482,33 @@ function Dashboard() {
                         <Button
                           size="sm"
                           variant="ghost"
+                          className="h-8 px-2 text-xs"
                           onClick={() => setBreakdownTeam(team)}
-                          className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-                          title="Detailed score breakdown"
+                          title="View rubric criteria breakdown"
                         >
-                          <Eye className="size-3.5 mr-1" /> Breakdown
+                          <Eye className="size-3.5 mr-1 text-muted-foreground" /> Criteria
                         </Button>
 
-                        {/* View Report Button */}
+                        {/* Edit Score Button */}
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setReportCardTeam(team)}
-                          className="h-8 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
-                          title="View 1-page printable official scorecard"
-                        >
-                          <FileText className="size-3.5 mr-1" /> View Report
-                        </Button>
-
-                        {/* Manual Evaluation / Edit Scores Button */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
+                          className="h-8 px-2 text-xs"
                           onClick={() => setEditScoreTeam(team)}
-                          className="h-8 px-2 text-xs border border-transparent hover:border-primary/30 text-primary hover:bg-primary/10"
-                          title="Manual evaluation, score overrides & dummy criteria fill"
+                          title="Override or edit scores manually"
                         >
-                          <Sliders className="size-3.5 mr-1" /> Manual
+                          <Sliders className="size-3.5 mr-1 text-muted-foreground" /> Override
+                        </Button>
+
+                        {/* Official Printable Scorecard Report */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => setReportCardTeam(team)}
+                          title="Generate official 1-page printable certificate scorecard"
+                        >
+                          <FileText className="size-3.5 mr-1 text-rose-500" /> Scorecard
                         </Button>
                       </div>
                     </td>
@@ -486,6 +519,18 @@ function Dashboard() {
           </table>
         </div>
       )}
+
+      {/* Live Evaluation Progress & Completion HUD Modal */}
+      <EvaluationProgressModal
+        isOpen={showLiveEvalModal}
+        onClose={() => setShowLiveEvalModal(false)}
+        team={liveEvalTeam}
+        isEvaluating={evaluatingTeamIds.has(liveEvalTeam?.id ?? "")}
+        progress={liveEvalProgress}
+        error={liveEvalError}
+        onRetry={() => liveEvalTeam && handleManualEvaluate(liveEvalTeam, true)}
+        onViewBreakdown={() => liveEvalTeam && setBreakdownTeam(liveEvalTeam)}
+      />
 
       {/* Detailed Score Breakdown Modal */}
       <ScoreBreakdownModal
@@ -506,6 +551,8 @@ function Dashboard() {
         team={reportCardTeam}
         isOpen={!!reportCardTeam}
         onClose={() => setReportCardTeam(null)}
+        plagiarismScore={reportCardTeam ? plagiarismMap.get(reportCardTeam.id)?.overallSimilarity : undefined}
+        plagiarismResult={reportCardTeam ? plagiarismMap.get(reportCardTeam.id) : undefined}
       />
 
       {/* Team Submission Artifacts & Links Modal */}

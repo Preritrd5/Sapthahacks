@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/password-input";
-import { isAllowedAccount } from "@/lib/submission";
 import { CollaborationHero } from "@/components/collaboration-hero";
+import { broadcastAuthChange } from "@/lib/auth-sync";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -33,39 +33,44 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // STRICT CHECK: Dev bypass is ONLY allowed on local development (localhost / 127.0.0.1)
-  const isLocalDev =
-    import.meta.env.DEV &&
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAllowedAccount(email)) return toast.error("This ID is not authorised.");
     setBusy(true);
 
     if (mode === "login") {
       try {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (!error) {
+        const { data: authRes, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (error || !authRes?.user) {
           setBusy(false);
-          navigate({ to: "/dashboard" });
-          return;
+          return toast.error(error?.message || "Invalid credentials.");
         }
-      } catch {}
 
-      if (password === "admin" || password === "admin123" || isLocalDev) {
-        localStorage.setItem("dev_admin_auth", JSON.stringify({ email: "TeamInoSap26@gmail.com", id: "dev-admin-id" }));
+        try {
+          await supabase.rpc("claim_first_admin");
+        } catch (rpcErr) {
+          console.warn("claim_first_admin sync:", rpcErr);
+        }
+
+        broadcastAuthChange({
+          type: "SIGN_IN",
+          userId: authRes.user.id,
+          email: authRes.user.email,
+        });
         setBusy(false);
-        toast.success("Signed in as authorized evaluation administrator");
+        toast.success(`Signed in as ${authRes.user.email}`);
         navigate({ to: "/dashboard" });
-        return;
+      } catch (err) {
+        setBusy(false);
+        return toast.error((err as Error).message || "Authentication error.");
       }
-
-      setBusy(false);
-      return toast.error("Invalid credentials.");
     } else {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
       setBusy(false);
       if (error) return toast.error(error.message);
       toast.success("If that account exists, a reset link is on its way.");
@@ -158,22 +163,6 @@ function AuthPage() {
               {busy && <Loader2 className="size-4 animate-spin mr-2" />}
               {mode === "login" ? "Sign In" : "Send reset link"}
             </Button>
-
-            {/* ONLY rendered in local development on localhost */}
-            {mode === "login" && isLocalDev && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full text-xs border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors"
-                onClick={() => {
-                  localStorage.setItem("dev_admin_auth", JSON.stringify({ email: "TeamInoSap26@gmail.com", id: "dev-admin-id" }));
-                  toast.success("Signed in with local dev bypass");
-                  navigate({ to: "/dashboard" });
-                }}
-              >
-                Local Dev Quick Login (Hidden in Production)
-              </Button>
-            )}
           </form>
 
           {mode === "forgot" && (

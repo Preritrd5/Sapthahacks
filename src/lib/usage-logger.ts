@@ -19,6 +19,11 @@ export interface ApiUsageLog {
 
 const STORAGE_KEY = "innovedge_recorded_api_logs_vault";
 
+function getApiStorageKey(userId?: string | null): string {
+  if (userId) return `${STORAGE_KEY}_${userId}`;
+  return STORAGE_KEY;
+}
+
 /**
  * Gemini 3.1 Flash Lite pricing (USD):
  * - Input/Prompt: $0.075 per 1,000,000 tokens
@@ -45,11 +50,12 @@ export function calculateTokenCost(promptTokens: number, completionTokens: numbe
   return Number((promptCost + completionCost).toFixed(6));
 }
 
-/** Get all recorded logs from local storage vault */
-export function getStoredApiLogs(): ApiUsageLog[] {
+/** Get all recorded logs from local storage vault, isolated by user */
+export function getStoredApiLogs(userId?: string | null): ApiUsageLog[] {
   if (typeof window === "undefined") return [];
+  const key = getApiStorageKey(userId);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -59,7 +65,10 @@ export function getStoredApiLogs(): ApiUsageLog[] {
 }
 
 /** Record a new API log entry to both Supabase and the persistent vault */
-export async function recordApiUsageLog(entry: Omit<ApiUsageLog, "id" | "total_tokens" | "estimated_cost_usd" | "created_at"> & { id?: string; created_at?: string }): Promise<ApiUsageLog> {
+export async function recordApiUsageLog(
+  entry: Omit<ApiUsageLog, "id" | "total_tokens" | "estimated_cost_usd" | "created_at"> & { id?: string; created_at?: string },
+  userId?: string | null
+): Promise<ApiUsageLog> {
   const prompt_tokens = Math.max(0, entry.prompt_tokens || 0);
   const completion_tokens = Math.max(0, entry.completion_tokens || 0);
   const total_tokens = prompt_tokens + completion_tokens;
@@ -84,10 +93,11 @@ export async function recordApiUsageLog(entry: Omit<ApiUsageLog, "id" | "total_t
 
   // 1. Save to local storage vault
   if (typeof window !== "undefined") {
+    const key = getApiStorageKey(userId);
     try {
-      const current = getStoredApiLogs();
+      const current = getStoredApiLogs(userId);
       const updated = [log, ...current].slice(0, 5000); // keep last 5000
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem(key, JSON.stringify(updated));
     } catch (e) {
       console.warn("Could not save API log to local storage:", e);
     }
@@ -96,16 +106,16 @@ export async function recordApiUsageLog(entry: Omit<ApiUsageLog, "id" | "total_t
   // 2. Try inserting into Supabase
   try {
     await supabase.from("api_usage_logs").insert({
-      id: log.id.startsWith("log-") ? undefined : log.id,
+      ...(log.id.startsWith("log-") ? {} : { id: log.id }),
       model: log.model,
       component: log.component,
-      team_id: log.team_id || undefined,
+      ...(log.team_id ? { team_id: log.team_id } : {}),
       status: log.status,
       http_status: log.http_status,
       prompt_tokens: log.prompt_tokens,
       completion_tokens: log.completion_tokens,
       duration_ms: log.duration_ms,
-      error: log.error || undefined,
+      error: log.error || null,
     });
   } catch (err) {
     // Ignore Supabase connection or RLS errors in dev/fallback

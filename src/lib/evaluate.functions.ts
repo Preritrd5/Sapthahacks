@@ -125,7 +125,12 @@ async function callAI(model: string, system: string, user: string) {
 
 export const checkAiStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("is_admin", { _uid: context.userId });
+    if (!isAdmin) {
+      throw new Error("Forbidden: Privileged administrative access required.");
+    }
+
     const config = getAiConfig();
     return {
       configured: Boolean(config),
@@ -137,7 +142,12 @@ export const checkAiStatus = createServerFn({ method: "GET" })
 
 export const testAiConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("is_admin", { _uid: context.userId });
+    if (!isAdmin) {
+      throw new Error("Forbidden: Privileged administrative access required.");
+    }
+
     const config = getAiConfig();
     if (!config) {
       return {
@@ -191,9 +201,14 @@ export const testAiConnection = createServerFn({ method: "POST" })
 
 export const evaluateJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { jobId: string }) => d)
+  .validator((d: { jobId: string }) => d)
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
+    const { data: isAdmin } = await sb.rpc("is_admin", { _uid: context.userId });
+    if (!isAdmin) {
+      throw new Error("Forbidden: Privileged administrative access required.");
+    }
+
     const { data: settings } = await sb.from("system_settings").select("*").eq("id", 1).single();
     if (!settings) throw new Error("Not authorised");
     if (settings.quota_exhausted) return { outcome: "quota" as const, message: settings.quota_message };
@@ -294,4 +309,153 @@ export const evaluateJob = createServerFn({ method: "POST" })
       await fail(err.message, final);
       return { outcome: final ? ("failed" as const) : ("retry" as const), message: err.message };
     }
+  });
+
+export const generateReportInsightsServerFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: { teamId: string; forceRegenerate?: boolean }) => d)
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase;
+    // 1. Verify administrator privilege
+    const { data: isAdmin } = await sb.rpc("is_admin", { _uid: context.userId });
+    if (!isAdmin) {
+      throw new Error("Forbidden: Privileged administrative access required.");
+    }
+
+    // 2. Fetch team and its evaluations
+    const [{ data: team }, { data: evals }] = await Promise.all([
+      sb.from("teams").select("*").eq("id", data.teamId).single(),
+      sb.from("evaluations").select("*").eq("team_id", data.teamId),
+    ]);
+
+    if (!team) throw new Error("Team not found");
+
+    // 3. Check existing database record if not forcing regeneration
+    if (!data.forceRegenerate) {
+      try {
+        const { data: existing, error: existErr } = await (sb.from("report_insights" as any).select("*").eq("team_id", data.teamId).maybeSingle() as any);
+        if (!existErr && existing && existing.evaluation_version === team.updated_at && Array.isArray(existing.strengths) && existing.strengths.length > 0) {
+          return {
+            teamId: existing.team_id,
+            strengths: existing.strengths,
+            areasToImprove: existing.areas_to_improve,
+            suggestions: existing.suggestions,
+            status: existing.status,
+            model: existing.model,
+            evaluationVersion: existing.evaluation_version,
+            generatedAt: existing.updated_at || existing.created_at,
+          };
+        }
+      } catch {}
+
+      // Fallback check in evaluation_templates table
+      try {
+        const { data: tmplExisting } = await sb.from("evaluation_templates").select("*").eq("component", "report_insights").eq("name", data.teamId).maybeSingle();
+        if (tmplExisting?.criteria) {
+          const c = tmplExisting.criteria as any;
+          if (c && c.evaluation_version === team.updated_at && Array.isArray(c.strengths) && c.strengths.length > 0) {
+            return {
+              teamId: data.teamId,
+              strengths: c.strengths,
+              areasToImprove: c.areas_to_improve || c.areasToImprove || [],
+              suggestions: c.suggestions || [],
+              status: c.status || "generated",
+              model: c.model,
+              evaluationVersion: c.evaluation_version,
+              generatedAt: c.updated_at || tmplExisting.created_at,
+            };
+          }
+        }
+      } catch {}
+    }
+
+    // 4. Try AI generation if configured
+    const config = getAiConfig();
+    const { data: settings } = await sb.from("system_settings").select("*").eq("id", 1).single();
+    const model = settings?.model || "google/gemini-3.1-flash-lite";
+
+    let insights: any = null;
+
+    if (config && evals && evals.length > 0) {
+      const systemPrompt = `You are the Lead Assessment Auditor for the INNOVEDGE Hackathon.
+Synthesize verified evaluation evidence across PDF Proposal, GitHub Code, and Deployed Website into structured assessment insights:
+1. Key Strengths (specific demonstrated capabilities backed by evidence)
+2. Areas to Improve (specific gaps, score deductions, missing tests or docs)
+3. Suggestions (actionable technical recommendations mapped to the areas to improve)
+Never fabricate findings. Use only evidence provided in the evaluation summary and marks.`;
+
+      const evalsSummary = evals.map((e: any) =>
+        `- ${e.component.toUpperCase()}: Score ${e.final_score ?? e.ai_score}/${e.max_score} | Status: ${e.status} | Summary: ${e.summary ?? "N/A"}`
+      ).join("\n");
+
+      const userPrompt = `TEAM: ${team.name}
+PROJECT: ${team.project_title ?? "N/A"}
+DESCRIPTION: ${team.project_description ?? "N/A"}
+OVERALL SCORE: ${team.final_override ?? "N/A"}
+EVALUATIONS:
+${evalsSummary}`;
+
+      try {
+        const { content } = await callAI(model, systemPrompt, userPrompt);
+        insights = JSON.parse(content);
+      } catch (err) {
+        console.warn("AI generation failed for report insights, falling back to evidence synthesis:", err);
+      }
+    }
+
+    // 5. Fallback deterministic evidence synthesis if AI was not run or failed
+    if (!insights || !Array.isArray(insights.strengths) || insights.strengths.length === 0) {
+      const { generateEvidenceBasedInsights } = await import("./report-insights");
+      const evMap: any = {};
+      evals?.forEach((e: any) => { evMap[e.component] = e; });
+      const row: any = { ...team, evals: evMap, aiFinal: null, approvedFinal: null, officialFinal: team.final_override, missing: [], overall: team.final_status };
+      const syn = generateEvidenceBasedInsights(row);
+      insights = {
+        strengths: syn.strengths,
+        areasToImprove: syn.areasToImprove,
+        suggestions: syn.suggestions,
+      };
+    }
+
+    // 6. Persist to authoritative Supabase PostgreSQL database
+    const payload = {
+      team_id: data.teamId,
+      strengths: insights.strengths,
+      areas_to_improve: insights.areasToImprove,
+      suggestions: insights.suggestions,
+      status: "generated",
+      model,
+      evaluation_version: team.updated_at,
+      updated_at: new Date().toISOString(),
+    };
+
+    let persisted = false;
+    try {
+      const { error: upsertErr } = await (sb.from("report_insights" as any).upsert(payload, { onConflict: "team_id" }) as any);
+      if (!upsertErr) persisted = true;
+    } catch {}
+
+    if (!persisted) {
+      try {
+        const { data: existingTmpl } = await sb.from("evaluation_templates").select("id").eq("component", "report_insights").eq("name", data.teamId).maybeSingle();
+        if (existingTmpl?.id) {
+          await sb.from("evaluation_templates").update({ criteria: payload as any }).eq("id", existingTmpl.id);
+        } else {
+          await sb.from("evaluation_templates").insert({ component: "report_insights", name: data.teamId, criteria: payload as any });
+        }
+      } catch (err) {
+        console.warn("Could not persist report insights fallback in serverFn:", err);
+      }
+    }
+
+    return {
+      teamId: data.teamId,
+      strengths: insights.strengths,
+      areasToImprove: insights.areasToImprove,
+      suggestions: insights.suggestions,
+      status: "generated",
+      model,
+      evaluationVersion: team.updated_at,
+      generatedAt: payload.updated_at,
+    };
   });

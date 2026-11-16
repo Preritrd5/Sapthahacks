@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, StatusBadge } from "@/components/page-header";
 import { useSettings } from "@/lib/queries";
 import { getStoredApiLogs, calculateTokenCost, type ApiUsageLog } from "@/lib/usage-logger";
+import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,13 +51,14 @@ export const Route = createFileRoute("/_authenticated/usage")({
 const PIE_COLORS = ["#38bdf8", "#818cf8", "#34d399", "#f59e0b", "#f43f5e"];
 
 function UsagePage() {
+  const { user } = useAuth();
   const settings = useSettings();
   const [q, setQ] = useState("");
   const [componentFilter, setComponentFilter] = useState("all");
 
-  // Query API logs from Supabase and merge with persistent vault
+  // Query API logs from Supabase and merge with persistent vault (scoped by user ID)
   const usageQuery = useQuery({
-    queryKey: ["api-usage-logs"],
+    queryKey: ["api-usage-logs", user?.id],
     queryFn: async () => {
       let remoteLogs: any[] = [];
       try {
@@ -70,7 +72,7 @@ function UsagePage() {
         console.warn("Could not fetch remote API logs from Supabase:", e);
       }
 
-      const localLogs = getStoredApiLogs();
+      const localLogs = getStoredApiLogs(user?.id);
 
       // Merge and deduplicate by ID
       const map = new Map<string, ApiUsageLog>();
@@ -155,16 +157,21 @@ function UsagePage() {
 
     logs.forEach((l) => {
       const c = l.component.toLowerCase();
-      if (map[c]) {
-        map[c].prompt += l.prompt_tokens;
-        map[c].completion += l.completion_tokens;
+      const entry = map[c];
+      if (entry) {
+        entry.prompt += l.prompt_tokens;
+        entry.completion += l.completion_tokens;
       }
     });
 
+    const pdf = map["pdf"] ?? { prompt: 0, completion: 0 };
+    const github = map["github"] ?? { prompt: 0, completion: 0 };
+    const website = map["website"] ?? { prompt: 0, completion: 0 };
+
     return [
-      { name: "PDF Deck", prompt: map.pdf.prompt, completion: map.pdf.completion },
-      { name: "GitHub Code", prompt: map.github.prompt, completion: map.github.completion },
-      { name: "Website", prompt: map.website.prompt, completion: map.website.completion },
+      { name: "PDF Deck", prompt: pdf.prompt, completion: pdf.completion },
+      { name: "GitHub Code", prompt: github.prompt, completion: github.completion },
+      { name: "Website", prompt: website.prompt, completion: website.completion },
     ];
   }, [logs]);
 

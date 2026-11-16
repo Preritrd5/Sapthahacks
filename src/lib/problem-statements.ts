@@ -139,82 +139,70 @@ export async function createProblemStatement(ps: Omit<ProblemStatement, "id">): 
     updated_at: new Date().toISOString(),
   };
 
-  try {
-    const { data, error } = await supabase
-      .from("evaluation_templates")
-      .insert({
-        component: "problem_statement",
-        name,
-        criteria: criteriaPayload as any,
-      })
-      .select()
-      .single();
+  const { data, error } = await supabase
+    .from("evaluation_templates")
+    .insert({
+      component: "problem_statement",
+      name,
+      criteria: criteriaPayload as any,
+    })
+    .select()
+    .single();
 
-    if (!error && data) {
-      const created: ProblemStatement = {
-        id: data.id,
-        ...ps,
-        created_at: data.created_at,
-        updated_at: criteriaPayload.updated_at,
-      };
-      const existing = loadLocal();
-      saveLocal([...existing.filter((x) => x.id !== created.id), created]);
-      await logActivity("Added problem statement", `${created.code}: ${created.title}`);
-      return created;
-    }
-  } catch (err) {
-    console.warn("Could not save to Supabase, falling back to local:", err);
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to create problem statement in database.");
   }
 
-  // Fallback local save
-  const fallback: ProblemStatement = {
-    id: crypto.randomUUID(),
+  const created: ProblemStatement = {
+    id: data.id,
     ...ps,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: data.created_at,
+    updated_at: criteriaPayload.updated_at,
   };
-  const list = loadLocal();
-  saveLocal([...list, fallback]);
-  await logActivity("Added problem statement", `${fallback.code}: ${fallback.title}`);
-  return fallback;
+  const existing = loadLocal();
+  saveLocal([...existing.filter((x) => x.id !== created.id), created]);
+  await logActivity("Added problem statement", `${created.code}: ${created.title}`);
+  return created;
 }
 
 export async function updateProblemStatement(id: string, ps: Partial<ProblemStatement>): Promise<void> {
-  try {
-    const { data: existing } = await supabase
-      .from("evaluation_templates")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+  const { data: existing, error: fetchError } = await supabase
+    .from("evaluation_templates")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
 
-    if (existing) {
-      const prev = (existing.criteria ?? {}) as any;
-      const updatedCode = (ps.code ?? prev.code ?? "").trim();
-      const updatedTitle = (ps.title ?? prev.title ?? "").trim();
-      const updatedCriteria = {
-        ...prev,
-        code: updatedCode,
-        title: updatedTitle,
-        category: (ps.category ?? prev.category ?? "").trim(),
-        description: (ps.description ?? prev.description ?? "").trim(),
-        requirements: (ps.requirements ?? prev.requirements ?? "").trim(),
-        updated_at: new Date().toISOString(),
-      };
-      const name = `${updatedCode} - ${updatedTitle}`;
-
-      await supabase
-        .from("evaluation_templates")
-        .update({
-          name,
-          criteria: updatedCriteria as any,
-        })
-        .eq("id", id);
-    }
-  } catch (err) {
-    console.warn("Could not update in Supabase:", err);
+  if (fetchError || !existing) {
+    throw new Error(fetchError?.message || "Problem statement not found in database.");
   }
 
-  // Update local storage
+  const prev = (existing.criteria ?? {}) as any;
+  const updatedCode = (ps.code ?? prev.code ?? "").trim();
+  const updatedTitle = (ps.title ?? prev.title ?? "").trim();
+  const updatedCriteria = {
+    ...prev,
+    code: updatedCode,
+    title: updatedTitle,
+    category: (ps.category ?? prev.category ?? "").trim(),
+    description: (ps.description ?? prev.description ?? "").trim(),
+    requirements: (ps.requirements ?? prev.requirements ?? "").trim(),
+    updated_at: new Date().toISOString(),
+  };
+  const name = `${updatedCode} - ${updatedTitle}`;
+
+  const { error: updateError } = await supabase
+    .from("evaluation_templates")
+    .update({
+      name,
+      criteria: updatedCriteria as any,
+    })
+    .eq("id", id);
+
+  if (updateError) {
+    throw new Error(updateError.message || "Failed to update problem statement in database.");
+  }
+
+  // Update local storage backup
   const list = loadLocal();
   const updatedList = list.map((item) => (item.id === id ? { ...item, ...ps, updated_at: new Date().toISOString() } : item));
   saveLocal(updatedList);
@@ -222,10 +210,9 @@ export async function updateProblemStatement(id: string, ps: Partial<ProblemStat
 }
 
 export async function deleteProblemStatement(id: string): Promise<void> {
-  try {
-    await supabase.from("evaluation_templates").delete().eq("id", id);
-  } catch (err) {
-    console.warn("Could not delete from Supabase:", err);
+  const { error } = await supabase.from("evaluation_templates").delete().eq("id", id);
+  if (error) {
+    throw new Error(error.message || "Failed to delete problem statement from database.");
   }
 
   const list = loadLocal();

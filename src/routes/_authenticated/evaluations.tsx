@@ -7,14 +7,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { EvaluationProgressModal } from "@/components/evaluation-progress-modal";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
-import { FileText, Eye, Search, FileDown, Play, Loader2, Sliders, Github, Globe, ExternalLink } from "lucide-react";
+import { FileText, Eye, Search, FileDown, Play, Loader2, Sliders, Github, Globe, ExternalLink, RotateCw } from "lucide-react";
 import { TeamReportCard } from "@/components/team-report-card";
 import { ScoreBreakdownModal } from "@/components/score-breakdown-modal";
 import { EditScoreModal } from "@/components/edit-score-modal";
 import { TeamSubmissionModal } from "@/components/team-submission-modal";
-import { evaluateSingleTeam } from "@/lib/evaluation-engine";
+import { evaluateSingleTeam, type EvaluationProgress } from "@/lib/evaluation-engine";
 import { COMPONENTS } from "@/lib/scoring";
+import { runComprehensivePlagiarismScan } from "@/lib/plagiarism";
 
 export const Route = createFileRoute("/_authenticated/evaluations")({
   head: () => ({
@@ -35,8 +39,16 @@ function EvaluationsPage() {
   const rows = useTeamRows();
   const teams = rows.data ?? [];
   const [status, setStatus] = useState("all");
+
+  const plagiarismMap = useMemo(() => runComprehensivePlagiarismScan(teams), [teams]);
   const [q, setQ] = useState("");
   const [evaluatingIds, setEvaluatingIds] = useState<Set<string>>(new Set());
+
+  // Live evaluation modal states
+  const [liveEvalTeam, setLiveEvalTeam] = useState<TeamRow | null>(null);
+  const [liveEvalProgress, setLiveEvalProgress] = useState<EvaluationProgress | null>(null);
+  const [showLiveEvalModal, setShowLiveEvalModal] = useState(false);
+  const [liveEvalError, setLiveEvalError] = useState<string | null>(null);
 
   const [selectedReportTeam, setSelectedReportTeam] = useState<TeamRow | null>(null);
   const [selectedBreakdownTeam, setSelectedBreakdownTeam] = useState<TeamRow | null>(null);
@@ -46,12 +58,27 @@ function EvaluationsPage() {
   const handleEvaluate = async (team: TeamRow) => {
     if (evaluatingIds.has(team.id)) return;
     setEvaluatingIds((prev) => new Set(prev).add(team.id));
-    toast.info(`Evaluating "${team.name}" across all components...`);
+    setLiveEvalTeam(team);
+    setLiveEvalError(null);
+    setShowLiveEvalModal(true);
+    setLiveEvalProgress({
+      teamId: team.id,
+      component: "pdf",
+      status: "processing",
+      progressPct: 15,
+      message: `Running live evaluation for "${team.name}"...`,
+    });
+
     try {
-      await evaluateSingleTeam(team, [...COMPONENTS], { forceRerun: true });
+      const res = await evaluateSingleTeam(team, [...COMPONENTS], {
+        forceRerun: true,
+        onProgress: (p) => setLiveEvalProgress(p),
+      });
+      setLiveEvalTeam(res);
       toast.success(`Evaluation complete for "${team.name}"!`);
       qc.invalidateQueries();
     } catch (err: any) {
+      setLiveEvalError(err?.message || "Evaluation failed");
       toast.error(err?.message || "Evaluation failed");
     } finally {
       setEvaluatingIds((prev) => {
@@ -59,6 +86,7 @@ function EvaluationsPage() {
         next.delete(team.id);
         return next;
       });
+      qc.invalidateQueries();
     }
   };
 
@@ -83,16 +111,18 @@ function EvaluationsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Team Evaluations"
-        desc="Consolidated final scores for every registered team across all rubric components."
-      >
-        <Button size="sm" variant="outline" asChild>
-          <Link to="/reports">
-            <FileDown className="size-4 mr-1.5" /> Export Reports
-          </Link>
-        </Button>
-      </PageHeader>
+      <FadeIn>
+        <PageHeader
+          title="Team Evaluations"
+          desc="Consolidated final scores for every registered team across all rubric components."
+        >
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/reports">
+              <FileDown className="size-4 mr-1.5" /> Export Reports
+            </Link>
+          </Button>
+        </PageHeader>
+      </FadeIn>
 
       {/* Filter and Search Bar */}
       <div className="mb-4 flex flex-col sm:flex-row gap-2">
@@ -141,7 +171,7 @@ function EvaluationsPage() {
                     {t.pdf_text || t.pdf_path ? (
                       <button
                         onClick={() => setSubmissionModal({ team: t, tab: "pdf" })}
-                        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-500/10 text-rose-500"
                       >
                         <FileText className="size-2.5" /> PDF
                       </button>
@@ -151,9 +181,9 @@ function EvaluationsPage() {
                         href={t.github_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-sky-500/10 text-sky-500 hover:bg-sky-500/20"
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-sky-500/10 text-sky-500"
                       >
-                        <Github className="size-2.5" /> Code <ExternalLink className="size-2" />
+                        <Github className="size-2.5" /> Code
                       </a>
                     ) : null}
                     {t.website_url ? (
@@ -161,43 +191,39 @@ function EvaluationsPage() {
                         href={t.website_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500"
                       >
-                        <Globe className="size-2.5" /> Site <ExternalLink className="size-2" />
+                        <Globe className="size-2.5" /> Web
                       </a>
                     ) : null}
                   </div>
                 </div>
-                <StatusBadge status={t.overall} />
+                <StatusBadge status={evaluatingIds.has(t.id) ? "evaluating" : t.overall} />
               </div>
 
-              {/* 4 Score Pills Grid */}
-              <div className="grid grid-cols-4 gap-1.5 text-center pt-1">
-                <div className="rounded-lg bg-card border border-border/50 p-2">
-                  <div className="text-[9px] uppercase font-bold text-muted-foreground">PDF (30%)</div>
-                  <div className={`font-mono text-xs mt-0.5 ${getScoreColor(t.evals?.pdf?.final_score)}`}>
-                    {t.evals?.pdf?.final_score != null ? fmt(t.evals.pdf.final_score) : "—"}
+              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-border/40 text-center text-xs">
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">PDF</div>
+                  <div className={`font-mono font-semibold ${getScoreColor(t.evals?.pdf?.final_score)}`}>
+                    <AnimatedNumber value={t.evals?.pdf?.final_score} precision={0} />
                   </div>
                 </div>
-
-                <div className="rounded-lg bg-card border border-border/50 p-2">
-                  <div className="text-[9px] uppercase font-bold text-muted-foreground">GitHub (40%)</div>
-                  <div className={`font-mono text-xs mt-0.5 ${getScoreColor(t.evals?.github?.final_score)}`}>
-                    {t.evals?.github?.final_score != null ? fmt(t.evals.github.final_score) : "—"}
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">Code</div>
+                  <div className={`font-mono font-semibold ${getScoreColor(t.evals?.github?.final_score)}`}>
+                    <AnimatedNumber value={t.evals?.github?.final_score} precision={0} />
                   </div>
                 </div>
-
-                <div className="rounded-lg bg-card border border-border/50 p-2">
-                  <div className="text-[9px] uppercase font-bold text-muted-foreground">Web (30%)</div>
-                  <div className={`font-mono text-xs mt-0.5 ${getScoreColor(t.evals?.website?.final_score)}`}>
-                    {t.evals?.website?.final_score != null ? fmt(t.evals.website.final_score) : "—"}
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">Site</div>
+                  <div className={`font-mono font-semibold ${getScoreColor(t.evals?.website?.final_score)}`}>
+                    <AnimatedNumber value={t.evals?.website?.final_score} precision={0} />
                   </div>
                 </div>
-
-                <div className="rounded-lg bg-primary/10 border border-primary/20 p-2">
-                  <div className="text-[9px] uppercase font-bold text-primary">Final /100</div>
-                  <div className="font-mono text-xs font-black text-primary mt-0.5">
-                    {fmt(t.officialFinal ?? t.aiFinal)}
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground font-bold text-primary">Final</div>
+                  <div className="font-mono font-black text-primary">
+                    <AnimatedNumber value={t.officialFinal ?? t.aiFinal} precision={1} />
                   </div>
                 </div>
               </div>
@@ -213,7 +239,7 @@ function EvaluationsPage() {
                   {evaluatingIds.has(t.id) ? (
                     <Loader2 className="size-3 animate-spin mr-1" />
                   ) : (
-                    <Play className="size-3 mr-1" />
+                    <Play className="size-3 mr-1 fill-current" />
                   )}
                   AI Eval
                 </Button>
@@ -303,75 +329,97 @@ function EvaluationsPage() {
                     </div>
                   </td>
 
+                  {/* PDF Deck Score */}
                   <td className="p-3.5 text-center font-mono">
                     <span className={getScoreColor(t.evals?.pdf?.final_score)}>
-                      {t.evals?.pdf?.final_score != null ? fmt(t.evals.pdf.final_score) : "—"}
+                      <AnimatedNumber value={t.evals?.pdf?.final_score} precision={1} />
                     </span>
                   </td>
 
+                  {/* GitHub Code Score */}
                   <td className="p-3.5 text-center font-mono">
                     <span className={getScoreColor(t.evals?.github?.final_score)}>
-                      {t.evals?.github?.final_score != null ? fmt(t.evals.github.final_score) : "—"}
+                      <AnimatedNumber value={t.evals?.github?.final_score} precision={1} />
                     </span>
                   </td>
 
+                  {/* Website Score */}
                   <td className="p-3.5 text-center font-mono">
                     <span className={getScoreColor(t.evals?.website?.final_score)}>
-                      {t.evals?.website?.final_score != null ? fmt(t.evals.website.final_score) : "—"}
+                      <AnimatedNumber value={t.evals?.website?.final_score} precision={1} />
                     </span>
                   </td>
 
-                  <td className="p-3.5 text-center">
-                    <div className="font-mono text-base font-black text-primary">
-                      {fmt(t.officialFinal ?? t.aiFinal)}
+                  {/* Final Score */}
+                  <td className="p-3.5 text-center font-mono">
+                    <div className="text-base font-black text-primary">
+                      <AnimatedNumber value={t.officialFinal ?? t.aiFinal} precision={1} />
                     </div>
+                    {t.final_override != null && (
+                      <span className="text-[10px] text-amber-500 font-medium block">
+                        Overridden
+                      </span>
+                    )}
                   </td>
 
+                  {/* Status Badge */}
                   <td className="p-3.5 text-center">
-                    <StatusBadge status={t.overall} />
+                    <StatusBadge status={evaluatingIds.has(t.id) ? "evaluating" : t.overall} />
                   </td>
 
+                  {/* Actions */}
                   <td className="p-3.5 pr-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleEvaluate(t)}
+                        variant={t.overall === "completed" || t.overall === "approved" ? "outline" : "default"}
                         disabled={evaluatingIds.has(t.id)}
-                        className="h-7 px-2 text-xs hover:border-primary hover:text-primary"
-                        title="Run automated AI evaluation across PDF, GitHub, and Website"
+                        onClick={() => handleEvaluate(t)}
+                        className={`text-xs h-7 px-2 font-semibold ${
+                          t.overall !== "completed" && t.overall !== "approved"
+                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                            : ""
+                        }`}
+                        title="Run multi-modal evaluation"
                       >
                         {evaluatingIds.has(t.id) ? (
-                          <Loader2 className="size-3.5 animate-spin mr-1" />
+                          <Loader2 className="size-3 animate-spin mr-1" />
+                        ) : t.overall === "completed" || t.overall === "approved" ? (
+                          <RotateCw className="size-3 mr-1" />
                         ) : (
-                          <Play className="size-3.5 mr-1" />
+                          <Play className="size-3 mr-1 fill-current" />
                         )}
-                        AI Eval
+                        {evaluatingIds.has(t.id) ? "Evaluating" : t.overall === "completed" || t.overall === "approved" ? "Re-eval" : "Evaluate"}
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedManualTeam(t)}
-                        className="h-7 px-2 text-xs border-primary/30 text-primary hover:bg-primary/10"
-                        title="Manually enter marks or fill dummy benchmark scores"
-                      >
-                        <Sliders className="size-3.5 mr-1" /> Manual
-                      </Button>
+
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="text-xs h-7 px-2"
                         onClick={() => setSelectedBreakdownTeam(t)}
-                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        title="View rubric criteria breakdown"
                       >
-                        <Eye className="size-3.5 mr-1" /> Breakdown
+                        <Eye className="size-3 mr-1 text-muted-foreground" /> Criteria
                       </Button>
+
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setSelectedReportTeam(t)}
-                        className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                        className="text-xs h-7 px-2 text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={() => setSelectedManualTeam(t)}
+                        title="Override or edit scores manually"
                       >
-                        <FileText className="size-3.5 mr-1" /> View Report
+                        <Sliders className="size-3 mr-1" /> Override
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-7 px-2"
+                        onClick={() => setSelectedReportTeam(t)}
+                        title="Generate official 1-page printable certificate scorecard"
+                      >
+                        <FileText className="size-3 mr-1 text-rose-500" /> Scorecard
                       </Button>
                     </div>
                   </td>
@@ -382,28 +430,42 @@ function EvaluationsPage() {
         </table>
       </div>
 
-      {/* Official 1-Page Scorecard Modal */}
+      {/* Live Evaluation Progress & Completion Modal */}
+      <EvaluationProgressModal
+        isOpen={showLiveEvalModal}
+        onClose={() => setShowLiveEvalModal(false)}
+        team={liveEvalTeam}
+        isEvaluating={evaluatingIds.has(liveEvalTeam?.id ?? "")}
+        progress={liveEvalProgress}
+        error={liveEvalError}
+        onRetry={() => liveEvalTeam && handleEvaluate(liveEvalTeam)}
+        onViewBreakdown={() => liveEvalTeam && setSelectedBreakdownTeam(liveEvalTeam)}
+      />
+
+      {/* Printable Scorecard Modal */}
       <TeamReportCard
         team={selectedReportTeam}
         isOpen={!!selectedReportTeam}
         onClose={() => setSelectedReportTeam(null)}
+        plagiarismScore={selectedReportTeam ? plagiarismMap.get(selectedReportTeam.id)?.overallSimilarity : undefined}
+        plagiarismResult={selectedReportTeam ? plagiarismMap.get(selectedReportTeam.id) : undefined}
       />
 
-      {/* Criteria Breakdown Modal */}
+      {/* Score Breakdown Modal */}
       <ScoreBreakdownModal
         team={selectedBreakdownTeam}
         isOpen={!!selectedBreakdownTeam}
         onClose={() => setSelectedBreakdownTeam(null)}
       />
 
-      {/* Manual Evaluation & Score Override Modal */}
+      {/* Manual Override Edit Modal */}
       <EditScoreModal
         team={selectedManualTeam}
         isOpen={!!selectedManualTeam}
         onClose={() => setSelectedManualTeam(null)}
       />
 
-      {/* Team Submission Artifacts & Links Modal */}
+      {/* Team Submission Modal */}
       <TeamSubmissionModal
         team={submissionModal?.team ?? null}
         defaultTab={submissionModal?.tab}

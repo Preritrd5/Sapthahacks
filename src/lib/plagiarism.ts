@@ -16,19 +16,40 @@ export interface PlagiarismEvidence {
 
 export type PlagiarismDecision = "pending_review" | "clean" | "flagged" | "dismissed" | "penalty_applied";
 
+export type PlagiarismScanStatus =
+  | "not_scanned"
+  | "pending"
+  | "in_progress"
+  | "completed_clean"
+  | "flagged_similarity"
+  | "duplicate_repo"
+  | "failed"
+  | "unavailable";
+
+export const PLAGIARISM_THRESHOLDS = {
+  LOW_BASELINE: 20, // Baseline similarity (< 20%) typical of common language & shared library imports
+  WARNING_REVIEW: 35, // Warning threshold (>= 35%) where manual jury review is recommended
+  HIGH_SIMILARITY: 60, // High similarity threshold (>= 60%) indicating critical cross-team code copying
+  DUPLICATE_REPO: 95, // Duplicate repository threshold (>= 95%) identifying identical repository submissions
+} as const;
+
 export interface PlagiarismResult {
   teamId: string;
   teamName: string;
-  similarityScore: number; // overall similarity index
-  pdfSimilarity: number;
-  githubSimilarity: number;
-  websiteSimilarity: number;
-  overallSimilarity: number;
+  scanStatus: PlagiarismScanStatus;
+  similarityScore: number | null; // null if unverified / not scanned
+  pdfSimilarity: number | null;
+  githubSimilarity: number | null;
+  websiteSimilarity: number | null;
+  overallSimilarity: number | null;
   isFlagged: boolean;
   severity: "clean" | "low" | "medium" | "high";
   confidence: number; // 0.0 - 1.0
   suspectedSource: string | null;
   flaggedReason: string;
+  recommendation: string;
+  methodology: string;
+  scanTimestamp: string;
   matchedWith: { teamId: string; teamName: string; similarity: number; reason: string }[];
   duplicateRepo: boolean;
   notes: string[];
@@ -132,8 +153,8 @@ export function saveStoredPlagiarismDecision(
     const all = getStoredPlagiarismDecisions();
     all[teamId] = {
       decision,
-      notes: notes || undefined,
-      deduction: deduction != null ? deduction : undefined,
+      ...(notes ? { notes } : {}),
+      ...(deduction != null ? { deduction } : {}),
       reviewedAt: new Date().toISOString(),
     };
     localStorage.setItem(DECISIONS_STORAGE_KEY, JSON.stringify(all));
@@ -175,6 +196,7 @@ export function runComprehensivePlagiarismScan(teams: TeamRow[]): Map<string, Pl
 
   for (let i = 0; i < processed.length; i++) {
     const a = processed[i];
+    if (!a) continue;
     let maxPdfSim = 0;
     let maxCodeSim = 0;
     let maxWebSim = 0;
@@ -186,6 +208,7 @@ export function runComprehensivePlagiarismScan(teams: TeamRow[]): Map<string, Pl
     for (let j = 0; j < processed.length; j++) {
       if (i === j) continue;
       const b = processed[j];
+      if (!b) continue;
 
       // 1. Exact Duplicate Repository Check
       if (a.repo && b.repo && a.repo === b.repo) {
@@ -288,17 +311,41 @@ export function runComprehensivePlagiarismScan(teams: TeamRow[]): Map<string, Pl
       }
     }
 
+    // Check whether the submission has valid artifacts to evaluate
+    const hasArtifacts = Boolean(
+      (a.team.pdf_text && a.team.pdf_text.trim().length > 20) ||
+      (a.team.github_url && a.team.github_url.trim().length > 0) ||
+      (a.team.website_url && a.team.website_url.trim().length > 0)
+    );
+
     // Weighted Overall Similarity Calculation
     const overallSim = isExactRepoDuplicate
       ? 100
       : Math.round(maxCodeSim * 0.45 + maxPdfSim * 0.35 + maxWebSim * 0.2);
 
     let severity: PlagiarismResult["severity"] = "clean";
-    if (overallSim >= 60 || isExactRepoDuplicate) severity = "high";
-    else if (overallSim >= 35) severity = "medium";
-    else if (overallSim >= 18) severity = "low";
+    if (overallSim >= PLAGIARISM_THRESHOLDS.HIGH_SIMILARITY || isExactRepoDuplicate) severity = "high";
+    else if (overallSim >= PLAGIARISM_THRESHOLDS.WARNING_REVIEW) severity = "medium";
+    else if (overallSim >= PLAGIARISM_THRESHOLDS.LOW_BASELINE) severity = "low";
 
     const isFlagged = severity === "high" || severity === "medium";
+
+    // Scan Status Discrimination
+    let scanStatus: PlagiarismScanStatus = "completed_clean";
+    let recommendation = "No significant cross-team similarity detected against registered submissions (peer comparison methodology).";
+
+    if (!hasArtifacts) {
+      scanStatus = "unavailable";
+      severity = "clean";
+      recommendation = "Artifacts not provided or text extraction unavailable. Upload submission materials to enable similarity verification.";
+      flaggedReasons = ["Submission artifacts missing or inaccessible for automated indexing."];
+    } else if (isExactRepoDuplicate) {
+      scanStatus = "duplicate_repo";
+      recommendation = "Exact duplicate repository URL detected with a peer team. Disqualification review required.";
+    } else if (isFlagged) {
+      scanStatus = "flagged_similarity";
+      recommendation = "Elevated token pattern overlap detected (>= 35%). Manual code audit recommended before qualification.";
+    }
 
     // Confidence Level
     let confidence = 0.95;
@@ -325,16 +372,20 @@ export function runComprehensivePlagiarismScan(teams: TeamRow[]): Map<string, Pl
     results.set(a.team.id, {
       teamId: a.team.id,
       teamName: a.team.name,
-      similarityScore: overallSim,
-      pdfSimilarity: maxPdfSim,
-      githubSimilarity: maxCodeSim,
-      websiteSimilarity: maxWebSim,
-      overallSimilarity: overallSim,
+      scanStatus,
+      similarityScore: hasArtifacts ? overallSim : null,
+      pdfSimilarity: hasArtifacts ? maxPdfSim : null,
+      githubSimilarity: hasArtifacts ? maxCodeSim : null,
+      websiteSimilarity: hasArtifacts ? maxWebSim : null,
+      overallSimilarity: hasArtifacts ? overallSim : null,
       isFlagged,
       severity,
       confidence,
       suspectedSource,
-      flaggedReason: flaggedReasons.length > 0 ? flaggedReasons.join("; ") : "No suspicious copying detected. Standard code patterns verified.",
+      flaggedReason: flaggedReasons.length > 0 ? flaggedReasons.join("; ") : "No suspicious cross-team duplication detected against registered submissions.",
+      recommendation,
+      methodology: "Multi-vector Jaccard 3-gram token shingling across PDF deck, GitHub AST source code (standard boilerplate excluded), and deployed web copy.",
+      scanTimestamp: new Date().toISOString(),
       matchedWith,
       duplicateRepo: isExactRepoDuplicate,
       notes: flaggedReasons,

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Users, UserPlus, Upload, ListChecks, ListOrdered, ClipboardCheck, Trophy, FileDown, Settings, ScrollText, LogOut, Loader2, ShieldAlert, Menu, X, Gauge, Lightbulb, CheckCircle2, Sun, Moon,
 } from "lucide-react";
@@ -10,34 +11,21 @@ import { QueueRunnerProvider, useQueueRunner } from "@/lib/queue-runner";
 import { AnimatedBackground } from "@/components/animated-background";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    if (typeof window !== "undefined") {
-      const dev = localStorage.getItem("dev_admin_auth");
-      if (dev) {
-        try {
-          const parsed = JSON.parse(dev);
-          if (parsed?.email) return { user: parsed };
-        } catch {}
-      }
-
-      const isLocalDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-      if (isLocalDev) {
-        const adminUser = { email: "TeamInoSap26@gmail.com", id: "dev-admin-id" };
-        localStorage.setItem("dev_admin_auth", JSON.stringify(adminUser));
-        return { user: adminUser };
-      }
-    }
-
+    // Authoritative check: live Supabase session
     try {
       const { data, error } = await supabase.auth.getUser();
-      if (!error && data?.user) return { user: data.user };
+      if (!error && data?.user) {
+        return { user: data.user };
+      }
     } catch {}
 
-    const adminUser = { email: "TeamInoSap26@gmail.com", id: "dev-admin-id" };
-    return { user: adminUser };
+    // Unauthenticated requests are redirected directly to /auth
+    throw redirect({ to: "/auth" });
   },
   component: Layout,
 });
@@ -61,55 +49,81 @@ const NAV = [
 ] as const;
 
 function Layout() {
-  const { user } = Route.useRouteContext();
-  const navigate = useNavigate();
   const qc = useQueryClient();
-  const admin = useQuery({
-    queryKey: ["is-admin", user.id],
-    initialData: true,
-    staleTime: Infinity,
-    queryFn: async () => {
-      const isLocalDev =
-        import.meta.env.DEV &&
-        typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  const { user: authUser, signOut, isAdmin, isLoading: authLoading } = useAuth();
+  const routeContext = Route.useRouteContext();
+  const user = authUser ?? routeContext.user;
 
-      if (isLocalDev && user.id === "dev-admin-id") {
-        return true;
-      }
+  const adminQuery = useQuery({
+    queryKey: ["is-admin", user?.id],
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      if (!user?.id) return false;
       try {
-        const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 1000));
-        const req = supabase.rpc("claim_first_admin");
-        const { data }: any = await Promise.race([req, timeout]);
-        return data !== undefined ? !!data : true;
-      } catch {
-        return true;
+        await supabase.rpc("claim_first_admin");
+        const { data: isAdminRpc } = await supabase.rpc("is_admin", { _uid: user.id });
+        if (isAdminRpc !== undefined && isAdminRpc !== null) return Boolean(isAdminRpc);
+        return user.email?.toLowerCase().trim() === "teaminosap26@gmail.com";
+      } catch (err) {
+        console.warn("Admin verification check:", err);
+        return user.email?.toLowerCase().trim() === "teaminosap26@gmail.com";
       }
     },
   });
 
-  const signOut = async () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("dev_admin_auth");
-    }
-    await qc.cancelQueries();
-    qc.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  };
+  const isUserAdmin = adminQuery.data !== undefined ? adminQuery.data : isAdmin;
 
-  if (admin.isLoading) return <div className="grid min-h-screen place-items-center"><Loader2 className="size-6 animate-spin text-primary" /></div>;
-  if (!admin.data)
+  // Realtime subscription for cross-tab and multi-device shared data synchronization
+  useEffect(() => {
+    if (!user || !isUserAdmin) return;
+    const channelName = `realtime-shared-${Math.random().toString(36).slice(2)}`;
+    const ch = supabase
+      .channel(channelName)
+      .on("postgres_changes", { event: "*", schema: "public", table: "teams" }, () => {
+        qc.invalidateQueries({ queryKey: ["team-rows"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "evaluations" }, () => {
+        qc.invalidateQueries({ queryKey: ["team-rows"] });
+        qc.invalidateQueries({ queryKey: ["cs"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "system_settings" }, () => {
+        qc.invalidateQueries({ queryKey: ["settings"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "evaluation_components" }, () => {
+        qc.invalidateQueries({ queryKey: ["weights"] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [user?.id, isUserAdmin, qc]);
+
+  if (authLoading || adminQuery.isLoading) {
+    return (
+      <div className="grid min-h-screen place-items-center">
+        <Loader2 className="size-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !isUserAdmin) {
     return (
       <div className="grid min-h-screen place-items-center px-4">
         <div className="glass max-w-md rounded-2xl p-8 text-center">
           <ShieldAlert className="mx-auto size-10 text-destructive" />
           <h1 className="mt-4 text-xl font-semibold">Not an authorised admin</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{user.email} is signed in but has no administrator access.</p>
-          <Button className="mt-6" variant="secondary" onClick={signOut}>Sign out</Button>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {user?.email || "Unknown user"} is signed in but has no administrator access.
+          </p>
+          <Button className="mt-6" variant="secondary" onClick={signOut}>
+            Sign out
+          </Button>
         </div>
       </div>
     );
+  }
 
   return (
     <QueueRunnerProvider>
@@ -120,6 +134,7 @@ function Layout() {
 
 function Shell({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const shouldReduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
   const q = useQueueRunner();
   const [isDark, setIsDark] = useState(() => {
@@ -279,7 +294,18 @@ function Shell({ email, onSignOut }: { email: string; onSignOut: () => void }) {
 
         {/* Page Container with Responsive Padding */}
         <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-5 md:p-8 min-w-0 relative z-10">
-          <Outlet />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={path}
+              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

@@ -99,9 +99,9 @@ function SettingsPage() {
     } catch {}
     if (typeof window !== "undefined") {
       localStorage.setItem("innovedge_weights", JSON.stringify({
-        pdf: Number(weights.pdf),
-        github: Number(weights.github),
-        website: Number(weights.website),
+        pdf: Number(weights["pdf"]),
+        github: Number(weights["github"]),
+        website: Number(weights["website"]),
       }));
     }
     qc.invalidateQueries();

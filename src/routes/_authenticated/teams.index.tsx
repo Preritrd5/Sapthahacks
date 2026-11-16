@@ -16,6 +16,7 @@ import { DeleteTeamModal } from "@/components/delete-team-modal";
 import { evaluateSingleTeam } from "@/lib/evaluation-engine";
 import { TeamReportCard } from "@/components/team-report-card";
 import { TeamSubmissionModal } from "@/components/team-submission-modal";
+import { runComprehensivePlagiarismScan } from "@/lib/plagiarism";
 
 export const Route = createFileRoute("/_authenticated/teams/")({
   head: () => ({
@@ -34,6 +35,8 @@ export const Route = createFileRoute("/_authenticated/teams/")({
 function Teams() {
   const rows = useTeamRows();
   const qc = useQueryClient();
+  const teams = rows.data ?? [];
+  const plagiarismMap = useMemo(() => runComprehensivePlagiarismScan(teams), [teams]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -300,6 +303,8 @@ function Teams() {
         team={reportTeam}
         isOpen={!!reportTeam}
         onClose={() => setReportTeam(null)}
+        plagiarismScore={reportTeam ? plagiarismMap.get(reportTeam.id)?.overallSimilarity : undefined}
+        plagiarismResult={reportTeam ? plagiarismMap.get(reportTeam.id) : undefined}
       />
 
       {/* Team Submission Artifacts & Links Modal */}

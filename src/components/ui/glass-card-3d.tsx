@@ -4,12 +4,13 @@ import React, { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-interface GlassCard3DProps extends React.HTMLAttributes<HTMLDivElement> {
+interface GlassCard3DProps {
   children: React.ReactNode;
   className?: string;
   containerClassName?: string;
   glowColor?: string;
   intensity?: number;
+  onClick?: () => void;
 }
 
 export function GlassCard3D({
@@ -18,7 +19,7 @@ export function GlassCard3D({
   containerClassName,
   glowColor = "rgba(217, 90, 43, 0.15)",
   intensity = 15,
-  ...props
+  onClick,
 }: GlassCard3DProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [rotateX, setRotateX] = useState(0);
@@ -73,8 +74,8 @@ export function GlassCard3D({
           damping: 20,
         }}
         style={{
-          transformStyle: "preserve-3d",
-        }}
+          transformStyle: "preserve-3d" as const,
+        } as any}
         className={cn(
           "relative overflow-hidden rounded-2xl border border-white/50 dark:border-white/10",
           "bg-white/75 dark:bg-card/70 backdrop-blur-xl",
@@ -83,7 +84,7 @@ export function GlassCard3D({
           isHovered && "shadow-[0_16px_40px_0_rgba(217,90,43,0.16)] dark:shadow-[0_16px_40px_0_rgba(217,90,43,0.22)]",
           className
         )}
-        {...props}
+        onClick={onClick}
       >
         {/* Dynamic Specular Sheen on Hover */}
         {isHovered && (

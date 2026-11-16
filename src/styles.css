@@ -245,12 +245,106 @@
 }
 
 @media print {
+  /* Complete Print Isolation: Hide everything except the Official Report Card */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the targeted report card element and all its children */
+  #single-page-report,
+  #single-page-report * {
+    visibility: visible !important;
+  }
+
+  /* Collapse any non-report top-level elements to prevent empty page generation */
+  body:has(#single-page-report) > *:not(:has(#single-page-report)) {
+    display: none !important;
+  }
+
+  /* Clean up dialog/modal wrappers in print so #single-page-report flows naturally */
+  [data-radix-portal],
+  [role="dialog"],
+  [data-state="open"] {
+    position: static !important;
+    overflow: visible !important;
+    display: block !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Position in normal flow and allow multi-page pagination without clipping */
+  #single-page-report {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 8mm 10mm !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  /* Prevent page breaks inside cards, table rows, and signatures */
+  #single-page-report tr,
+  #single-page-report .rounded-xl,
+  #single-page-report .report-header,
+  #single-page-report .report-footer,
+  #single-page-report .break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Force light theme colors on report elements during print */
+  #single-page-report .bg-card,
+  #single-page-report .bg-background {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  #single-page-report .text-foreground {
+    color: #0f172a !important;
+  }
+
+  #single-page-report .text-muted-foreground {
+    color: #475569 !important;
+  }
+
+  #single-page-report .border-border,
+  #single-page-report .border-border\/80,
+  #single-page-report .border-border\/60 {
+    border-color: #e2e8f0 !important;
+  }
+
+  /* Reset outer shell overflow and modals */
+  html,
+  body {
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+
   .no-print {
     display: none !important;
   }
 
-  body {
-    background: white !important;
-    color: black !important;
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
   }
 }

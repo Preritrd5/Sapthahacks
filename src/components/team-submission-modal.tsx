@@ -13,7 +13,7 @@ interface Props {
   team: TeamRow | null;
   isOpen: boolean;
   onClose: () => void;
-  defaultTab?: "pdf" | "github" | "website";
+  defaultTab?: "pdf" | "github" | "website" | undefined;
 }
 
 export function TeamSubmissionModal({ team, isOpen, onClose, defaultTab = "pdf" }: Props) {

@@ -72,6 +72,7 @@ export function generateDefaultCriteriaScores(
 
   for (let idx = 0; idx < criteriaDefaults.length; idx++) {
     const crit = criteriaDefaults[idx];
+    if (!crit) continue;
     let marks: number;
     if (idx === criteriaDefaults.length - 1) {
       marks = Math.max(1, Math.min(crit.max, score - runningSum));
@@ -177,10 +178,27 @@ async function executeTeamEvaluation(
   // 2. Evaluate each component independently
   for (let i = 0; i < componentsToEvaluate.length; i++) {
     const c = componentsToEvaluate[i];
+    if (!c) continue;
     const t0 = Date.now();
 
-    // Snappy processing delay (25ms) for responsive, fast UI evaluation
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    const startPct = Math.round((i / componentsToEvaluate.length) * 100);
+    if (onProgress) {
+      onProgress({
+        teamId: team.id,
+        component: c,
+        status: "processing",
+        progressPct: Math.max(10, startPct),
+        message:
+          c === "pdf"
+            ? "Extracting and evaluating PDF project proposal & architecture..."
+            : c === "github"
+            ? "Inspecting GitHub repository code quality, structure & security..."
+            : "Auditing deployed web prototype, UX & live responsiveness...",
+      });
+    }
+
+    // Natural processing pacing (180ms) for responsive, polished multi-step evaluation animations
+    await new Promise((resolve) => setTimeout(resolve, 180));
 
     let score = 0;
     let summary = "";
@@ -236,11 +254,12 @@ async function executeTeamEvaluation(
     score = Math.min(100, Math.max(30, score));
 
     // Generate criteria marks that sum to the exact component score
-    const totalMax = criteriaDefaults.reduce((acc, cr) => acc + cr.max, 0); // 100
+    const totalMax = criteriaDefaults.reduce((acc: number, cr: { max: number }) => acc + cr.max, 0); // 100
     let runningSum = 0;
 
     for (let idx = 0; idx < criteriaDefaults.length; idx++) {
       const crit = criteriaDefaults[idx];
+      if (!crit) continue;
       let marks: number;
       if (idx === criteriaDefaults.length - 1) {
         // Last criterion takes remainder so the sum of criteria matches the component score exactly
@@ -351,6 +370,16 @@ async function executeTeamEvaluation(
   // 4. Update persistent local store
   updatePersistentTeam(team.id, completedTeam);
 
+  if (onProgress) {
+    onProgress({
+      teamId: team.id,
+      component: componentsToEvaluate[componentsToEvaluate.length - 1] ?? "pdf",
+      status: "completed",
+      progressPct: 100,
+      message: `Evaluation certified successfully (${completedTeam.officialFinal ?? completedTeam.aiFinal}/100)`,
+    });
+  }
+
   // 5. Try syncing to Supabase in background
   try {
     for (const c of componentsToEvaluate) {
@@ -397,6 +426,7 @@ export async function evaluateAllTeams(
 ): Promise<void> {
   for (let i = 0; i < teams.length; i++) {
     const t = teams[i];
+    if (!t) continue;
     if (onTeamProgress) {
       onTeamProgress(t.name, Math.round((i / teams.length) * 100));
     }

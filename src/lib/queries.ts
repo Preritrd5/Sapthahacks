@@ -9,6 +9,7 @@ import {
   savePersistentTeams,
   upsertPersistentTeam,
 } from "./team-store";
+import { useAuth } from "./auth-context";
 
 export type Team = Tables<"teams">;
 export type Evaluation = Tables<"evaluations">;
@@ -106,7 +107,7 @@ export function overallStatus(t: Team, evals: Partial<Record<Component, Evaluati
   return "pending";
 }
 
-export const useTeamRows = () => {
+export const useTeamRows = (_explicitUserId?: string | null) => {
   const weights = useWeights();
   return useQuery({
     queryKey: ["team-rows", weights.data],
@@ -119,42 +120,38 @@ export const useTeamRows = () => {
           fetchAll<Evaluation>("evaluations"),
         ]);
 
-        if (teams && teams.length > 0) {
-          const byTeam = new Map<string, Evaluation[]>();
-          evals.forEach((e) => byTeam.set(e.team_id, [...(byTeam.get(e.team_id) ?? []), e]));
-          const liveRows = teams.map((t): TeamRow => {
-            const list = byTeam.get(t.id) ?? [];
-            const ev = Object.fromEntries(list.map((e) => [e.component, e])) as TeamRow["evals"];
-            const norm = list.map((e) => ({
-              ...e,
-              ai_score: e.ai_score,
-              final_score: e.final_score,
-              max_score: e.max_score,
-            }));
-            const ai = weightedFinal(norm, activeWeights, "ai");
-            const ap = weightedFinal(norm, activeWeights, "approved");
-            return {
-              ...t,
-              evals: ev,
-              aiFinal: ai.score,
-              approvedFinal: ap.score,
-              officialFinal: t.final_override ?? ap.score,
-              missing: ap.missing,
-              overall: overallStatus(t, ev),
-            };
-          });
+        const byTeam = new Map<string, Evaluation[]>();
+        (evals ?? []).forEach((e) => byTeam.set(e.team_id, [...(byTeam.get(e.team_id) ?? []), e]));
 
-          // Sync into persistent local storage so it is never lost
-          savePersistentTeams(liveRows);
-          return liveRows;
-        }
+        const liveRows = (teams ?? []).map((t): TeamRow => {
+          const list = byTeam.get(t.id) ?? [];
+          const ev = Object.fromEntries(list.map((e) => [e.component, e])) as TeamRow["evals"];
+          const norm = list.map((e) => ({
+            ...e,
+            ai_score: e.ai_score,
+            final_score: e.final_score,
+            max_score: e.max_score,
+          }));
+          const ai = weightedFinal(norm, activeWeights, "ai");
+          const ap = weightedFinal(norm, activeWeights, "approved");
+          return {
+            ...t,
+            evals: ev,
+            aiFinal: ai.score,
+            approvedFinal: ap.score,
+            officialFinal: t.final_override ?? ap.score,
+            missing: ap.missing,
+            overall: overallStatus(t, ev),
+          };
+        });
+
+        // Backup to local storage for offline resilience
+        savePersistentTeams(liveRows);
+        return liveRows;
       } catch (err) {
-        console.warn("Failed to fetch teams from Supabase database, retrieving from persistent vault:", err);
+        console.warn("Failed to fetch teams from Supabase database, retrieving from local storage:", err);
+        return getPersistentTeams();
       }
-
-      // Supabase returned 0 rows or is blocked by RLS/offline: RETRIEVE FROM PERSISTENT VAULT
-      const persistentTeams = getPersistentTeams();
-      return persistentTeams;
     },
   });
 };

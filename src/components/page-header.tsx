@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { CheckCircle2, Clock, AlertTriangle, Loader2, ShieldCheck, XCircle } from "lucide-react";
 
 export function PageHeader({ title, desc, children }: { title: string; desc?: string | undefined; children?: ReactNode }) {
   return (
@@ -14,14 +15,65 @@ export function PageHeader({ title, desc, children }: { title: string; desc?: st
 }
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
-  const tone: Record<string, string> = {
-    pending: "bg-muted text-muted-foreground", queued: "bg-muted text-muted-foreground", cancelled: "bg-muted text-muted-foreground",
-    processing: "bg-primary/20 text-primary", completed: "bg-violet/20 text-violet",
-    done: "bg-success/20 text-success", approved: "bg-success/20 text-success",
-    failed: "bg-destructive/20 text-destructive", rejected: "bg-destructive/20 text-destructive",
-    stale: "bg-warning/20 text-warning", "needs review": "bg-warning/20 text-warning", "not started": "bg-muted text-muted-foreground",
+  const normalized = status.toLowerCase();
+
+  const getStatusConfig = () => {
+    switch (normalized) {
+      case "processing":
+      case "evaluating":
+        return {
+          classes: "bg-primary/15 text-primary border border-primary/30",
+          icon: <Loader2 className="size-3 animate-spin mr-1" />,
+        };
+      case "completed":
+        return {
+          classes: "bg-violet/15 text-violet border border-violet/30",
+          icon: <CheckCircle2 className="size-3 mr-1" />,
+        };
+      case "approved":
+      case "done":
+        return {
+          classes: "bg-success/15 text-success border border-success/30",
+          icon: <ShieldCheck className="size-3 mr-1" />,
+        };
+      case "failed":
+      case "rejected":
+        return {
+          classes: "bg-destructive/15 text-destructive border border-destructive/30",
+          icon: <XCircle className="size-3 mr-1" />,
+        };
+      case "stale":
+      case "needs review":
+        return {
+          classes: "bg-warning/15 text-warning border border-warning/30",
+          icon: <AlertTriangle className="size-3 mr-1" />,
+        };
+      case "pending":
+      case "queued":
+      case "cancelled":
+      case "not started":
+      default:
+        return {
+          classes: "bg-muted/80 text-muted-foreground border border-border/50",
+          icon: <Clock className="size-3 mr-1 opacity-70" />,
+        };
+    }
   };
-  return <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium capitalize", tone[status] ?? "bg-muted text-muted-foreground", className)}>{status}</span>;
+
+  const { classes, icon } = getStatusConfig();
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize transition-all duration-300 shadow-xs",
+        classes,
+        className
+      )}
+    >
+      {icon}
+      <span>{status}</span>
+    </span>
+  );
 }
 
 export function Empty({ title, desc, children }: { title: string; desc?: string | undefined; children?: ReactNode }) {

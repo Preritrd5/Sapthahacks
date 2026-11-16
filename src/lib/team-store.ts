@@ -4,6 +4,11 @@ import { COMPONENTS, type Weights } from "./scoring";
 const STORAGE_KEY = "innovedge_persistent_teams_vault";
 const MEMBERS_STORAGE_KEY = "innovedge_persistent_team_members";
 
+function getStorageKey(userId?: string | null): string {
+  if (userId) return `${STORAGE_KEY}_${userId}`;
+  return STORAGE_KEY;
+}
+
 export const DEFAULT_WEIGHTS: Weights = {
   pdf: 30,
   github: 40,
@@ -48,7 +53,7 @@ export const INITIAL_TEAMS: TeamRow[] = [
         summary: "Clear problem formulation and strong methodology.",
         model: "google/gemini-3.1-flash-lite",
         error: null,
-        approved_by: "dev-admin-id",
+        approved_by: "admin",
         approved_at: new Date().toISOString(),
         created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
         updated_at: new Date().toISOString(),
@@ -66,7 +71,7 @@ export const INITIAL_TEAMS: TeamRow[] = [
         summary: "Clean repository structure, TypeScript typing, and automated testing.",
         model: "google/gemini-3.1-flash-lite",
         error: null,
-        approved_by: "dev-admin-id",
+        approved_by: "admin",
         approved_at: new Date().toISOString(),
         created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
         updated_at: new Date().toISOString(),
@@ -84,7 +89,7 @@ export const INITIAL_TEAMS: TeamRow[] = [
         summary: "Responsive design, modern typography and clean interactive layout.",
         model: "google/gemini-3.1-flash-lite",
         error: null,
-        approved_by: "dev-admin-id",
+        approved_by: "admin",
         approved_at: new Date().toISOString(),
         created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
         updated_at: new Date().toISOString(),
@@ -160,17 +165,16 @@ export const INITIAL_MEMBERS: Record<string, { name: string; email: string }[]> 
 };
 
 /** Load teams from persistent local storage */
-export function getPersistentTeams(): TeamRow[] {
-  if (typeof window === "undefined") return INITIAL_TEAMS;
+export function getPersistentTeams(userId?: string | null): TeamRow[] {
+  if (typeof window === "undefined") return [];
+  const key = getStorageKey(userId);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) {
-      // First time initialization: seed the 3 default hackathon teams
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TEAMS));
-      return INITIAL_TEAMS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed.map((t) => ({
         ...t,
         evals: t.evals || {},
@@ -178,27 +182,26 @@ export function getPersistentTeams(): TeamRow[] {
         overall: t.overall || "pending",
       }));
     }
-    // If empty array was stored accidentally, restore initial teams
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_TEAMS));
-    return INITIAL_TEAMS;
+    return [];
   } catch {
-    return INITIAL_TEAMS;
+    return [];
   }
 }
 
-/** Save teams to persistent storage */
-export function savePersistentTeams(teams: TeamRow[]): void {
+/** Save teams to persistent storage, isolated by authenticated user */
+export function savePersistentTeams(teams: TeamRow[], userId?: string | null): void {
   if (typeof window === "undefined") return;
+  const key = getStorageKey(userId);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(teams));
+    localStorage.setItem(key, JSON.stringify(teams));
   } catch (err) {
     console.warn("Failed to persist teams to localStorage:", err);
   }
 }
 
 /** Save a single team (add or update) */
-export function upsertPersistentTeam(team: TeamRow): void {
-  const current = getPersistentTeams();
+export function upsertPersistentTeam(team: TeamRow, userId?: string | null): void {
+  const current = getPersistentTeams(userId);
   const idx = current.findIndex((t) => t.id === team.id);
   let updated: TeamRow[];
   if (idx >= 0) {
@@ -207,21 +210,21 @@ export function upsertPersistentTeam(team: TeamRow): void {
   } else {
     updated = [team, ...current];
   }
-  savePersistentTeams(updated);
+  savePersistentTeams(updated, userId);
 }
 
 /** Update specific fields on a team */
-export function updatePersistentTeam(id: string, updates: Partial<TeamRow>): void {
-  const current = getPersistentTeams();
+export function updatePersistentTeam(id: string, updates: Partial<TeamRow>, userId?: string | null): void {
+  const current = getPersistentTeams(userId);
   const updated = current.map((t) => (t.id === id ? { ...t, ...updates } : t));
-  savePersistentTeams(updated);
+  savePersistentTeams(updated, userId);
 }
 
 /** Explicitly delete a team (ONLY deleted when user confirms deletion) */
-export function deletePersistentTeam(id: string): void {
-  const current = getPersistentTeams();
+export function deletePersistentTeam(id: string, userId?: string | null): void {
+  const current = getPersistentTeams(userId);
   const updated = current.filter((t) => t.id !== id);
-  savePersistentTeams(updated);
+  savePersistentTeams(updated, userId);
 }
 
 /** Get persistent members for a team */

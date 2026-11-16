@@ -450,6 +450,56 @@ export type Database = {
           },
         ]
       }
+      report_insights: {
+        Row: {
+          areas_to_improve: Json
+          created_at: string
+          evaluation_version: string | null
+          failure_reason: string | null
+          id: string
+          model: string | null
+          status: string
+          strengths: Json
+          suggestions: Json
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          areas_to_improve?: Json
+          created_at?: string
+          evaluation_version?: string | null
+          failure_reason?: string | null
+          id?: string
+          model?: string | null
+          status?: string
+          strengths?: Json
+          suggestions?: Json
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          areas_to_improve?: Json
+          created_at?: string
+          evaluation_version?: string | null
+          failure_reason?: string | null
+          id?: string
+          model?: string | null
+          status?: string
+          strengths?: Json
+          suggestions?: Json
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_insights_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_settings: {
         Row: {
           batch_size: number
@@ -591,6 +641,7 @@ export type Database = {
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
       claim_first_admin: { Args: never; Returns: boolean }
+      get_admin_status: { Args: never; Returns: Json }
       is_admin: { Args: { _uid: string }; Returns: boolean }
     }
     Enums: {

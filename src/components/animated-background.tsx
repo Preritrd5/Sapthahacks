@@ -55,7 +55,7 @@ export function AnimatedBackground() {
         size: Math.random() * 2.8 + 1.2,
         alpha: Math.random() * 0.5 + 0.2,
         targetAlpha: Math.random() * 0.6 + 0.2,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: colors[Math.floor(Math.random() * colors.length)] ?? "rgba(217, 90, 43, ",
       });
     }
 
@@ -73,15 +73,19 @@ export function AnimatedBackground() {
 
       // Draw faint constellation lines between close particles
       for (let i = 0; i < particles.length; i++) {
+        const p1 = particles[i];
+        if (!p1) continue;
         for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
+          const p2 = particles[j];
+          if (!p2) continue;
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 110) {
             const lineAlpha = (1 - dist / 110) * 0.15;
             ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
             ctx.strokeStyle = `rgba(217, 90, 43, ${lineAlpha})`;
             ctx.lineWidth = 0.75;
             ctx.stroke();

@@ -65,6 +65,9 @@ function Import() {
   const save = async () => {
     const ok = rows.filter(canImport);
     setBusy(true);
+    try {
+      await supabase.rpc("claim_first_admin");
+    } catch {}
     let n = 0;
     for (const r of ok) {
       const file = pdfFor(r.name);

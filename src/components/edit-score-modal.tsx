@@ -162,14 +162,32 @@ export function EditScoreModal({ team, isOpen, onClose }: Props) {
         for (const c of COMPONENTS) {
           const e = updatedEvals[c];
           if (e) {
-            await supabase.from("evaluations").upsert({
+            const { data: savedEval } = await supabase.from("evaluations").upsert({
               team_id: team.id,
               component: c,
               status: e.status,
               final_score: e.final_score,
               ai_score: e.ai_score,
               updated_at: new Date().toISOString(),
-            }, { onConflict: "team_id,component" });
+            }, { onConflict: "team_id,component" }).select().single();
+
+            if (savedEval?.id) {
+              const criteriaList = generateDefaultCriteriaScores(team.id, c, Number(e.final_score));
+              await supabase.from("criterion_scores").delete().eq("evaluation_id", savedEval.id);
+              await supabase.from("criterion_scores").insert(
+                criteriaList.map((crit, idx) => ({
+                  evaluation_id: savedEval.id,
+                  criterion_name: crit.criterion_name,
+                  max_marks: crit.max_marks,
+                  position: idx + 1,
+                  ai_marks: crit.ai_marks,
+                  admin_marks: crit.ai_marks,
+                  ai_explanation: crit.ai_explanation,
+                  ai_evidence: crit.ai_evidence,
+                  confidence: crit.confidence,
+                }))
+              );
+            }
           }
         }
 

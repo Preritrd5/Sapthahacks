@@ -15,6 +15,20 @@
       "when": 1794144997720,
       "tag": "0001_restrict_admin_and_require_complete_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794150000000,
+      "tag": "0002_fix_admin_rls_and_storage",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794155000000,
+      "tag": "0003_report_insights",
+      "breakpoints": true
     }
   ]
 }

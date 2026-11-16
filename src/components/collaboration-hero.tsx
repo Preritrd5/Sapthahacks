@@ -47,17 +47,21 @@ export function CollaborationHero() {
 
       // Draw constellation proximity lines
       for (let i = 0; i < particles.length; i++) {
+        const p1 = particles[i];
+        if (!p1) continue;
         for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
+          const p2 = particles[j];
+          if (!p2) continue;
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 85) {
             const lineAlpha = (1 - dist / 85) * 0.16;
             ctx.strokeStyle = `rgba(217, 93, 57, ${lineAlpha})`;
             ctx.lineWidth = 0.8;
             ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
             ctx.stroke();
           }
         }

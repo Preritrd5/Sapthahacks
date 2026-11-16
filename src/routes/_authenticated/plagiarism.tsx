@@ -29,6 +29,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
 import {
   runComprehensivePlagiarismScan,
@@ -104,8 +106,8 @@ function PlagiarismPage() {
   const handleVerdict = async (team: TeamRow, decision: PlagiarismDecision, notes?: string, deduction?: number) => {
     try {
       await applyAdminPlagiarismVerdict(team, decision, {
-        notes,
-        deduction,
+        ...(notes ? { notes } : {}),
+        ...(deduction != null ? { deduction } : {}),
         reviewerId: "admin-reviewer",
       });
       toast.success(`Plagiarism verdict applied for ${team.name}: ${decision.replace("_", " ")}`);
@@ -180,54 +182,66 @@ function PlagiarismPage() {
 
   return (
     <>
-      <PageHeader
-        title="Plagiarism Detection Module"
-        desc="Dedicated cross-team similarity scanning across PDF documents, GitHub code, and deployed websites."
-      >
-        <Button onClick={handleRescan} disabled={scanning} size="sm">
-          <RotateCw className={`size-4 mr-1.5 ${scanning ? "animate-spin" : ""}`} />
-          {scanning ? "Scanning…" : "Re-scan Submissions"}
-        </Button>
-      </PageHeader>
+      <FadeIn>
+        <PageHeader
+          title="Plagiarism Detection Module"
+          desc="Dedicated cross-team similarity scanning across PDF documents, GitHub code, and deployed websites."
+        >
+          <Button onClick={handleRescan} disabled={scanning} size="sm">
+            <RotateCw className={`size-4 mr-1.5 ${scanning ? "animate-spin" : ""}`} />
+            {scanning ? "Scanning…" : "Re-scan Submissions"}
+          </Button>
+        </PageHeader>
+      </FadeIn>
 
-      {/* Overview Stat Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
-        <div className="glass rounded-2xl p-4">
+      {/* Overview Stat Cards with Staggered Entrance */}
+      <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
+        <StaggerItem className="glass rounded-2xl p-4">
           <div className="text-[11px] font-semibold uppercase text-muted-foreground">Teams Analyzed</div>
-          <div className="mt-1 font-mono text-2xl font-bold">{totalScanned}</div>
+          <div className="mt-1 font-mono text-2xl font-bold">
+            <AnimatedNumber value={totalScanned} precision={0} />
+          </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">Multi-vector checks</div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass rounded-2xl p-4 border-rose-500/30 bg-rose-500/5">
+        <StaggerItem className="glass rounded-2xl p-4 border-rose-500/30 bg-rose-500/5">
           <div className="text-[11px] font-semibold uppercase text-rose-500 flex items-center gap-1">
             <ShieldAlert className="size-3.5" /> High Similarity
           </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-rose-500">{highRiskCount}</div>
+          <div className="mt-1 font-mono text-2xl font-bold text-rose-500">
+            <AnimatedNumber value={highRiskCount} precision={0} />
+          </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">&gt;50% code/PDF overlap</div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass rounded-2xl p-4 border-amber-500/30 bg-amber-500/5">
+        <StaggerItem className="glass rounded-2xl p-4 border-amber-500/30 bg-amber-500/5">
           <div className="text-[11px] font-semibold uppercase text-amber-500 flex items-center gap-1">
             <AlertTriangle className="size-3.5" /> Medium Overlap
           </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-amber-500">{mediumRiskCount}</div>
+          <div className="mt-1 font-mono text-2xl font-bold text-amber-500">
+            <AnimatedNumber value={mediumRiskCount} precision={0} />
+          </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">35% - 50% overlap</div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass rounded-2xl p-4 border-primary/30 bg-primary/5">
+        <StaggerItem className="glass rounded-2xl p-4 border-primary/30 bg-primary/5">
           <div className="text-[11px] font-semibold uppercase text-primary flex items-center gap-1">
             <Info className="size-3.5" /> Needs Admin Review
           </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-primary">{pendingReviewCount}</div>
+          <div className="mt-1 font-mono text-2xl font-bold text-primary">
+            <AnimatedNumber value={pendingReviewCount} precision={0} />
+          </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">Admin final decision required</div>
-        </div>
+        </StaggerItem>
 
-        <div className="glass rounded-2xl p-4">
+        <StaggerItem className="glass rounded-2xl p-4">
           <div className="text-[11px] font-semibold uppercase text-muted-foreground">Actions Taken</div>
-          <div className="mt-1 font-mono text-2xl font-bold text-foreground">{confirmedPlagiarismCount}</div>
+          <div className="mt-1 font-mono text-2xl font-bold text-foreground">
+            <AnimatedNumber value={confirmedPlagiarismCount} precision={0} />
+          </div>
           <div className="text-[11px] text-muted-foreground mt-0.5">Penalized / Disqualified</div>
-        </div>
-      </div>
+        </StaggerItem>
+      </StaggerContainer>
 
       {/* Boilerplate Filter Notice Banner */}
       <div className="mb-4 rounded-xl border border-primary/20 bg-primary/10 p-3.5 text-xs flex items-start gap-2.5">
@@ -336,8 +350,8 @@ function PlagiarismPage() {
                       <div className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
                         <FileText className="size-3 text-rose-400" /> PDF
                       </div>
-                      <div className={`font-mono text-sm font-bold ${item.pdfSimilarity >= 35 ? "text-rose-500" : "text-foreground"}`}>
-                        {item.pdfSimilarity}%
+                      <div className={`font-mono text-sm font-bold ${item.pdfSimilarity != null && item.pdfSimilarity >= 35 ? "text-rose-500" : "text-foreground"}`}>
+                        {item.pdfSimilarity != null ? `${item.pdfSimilarity}%` : "—"}
                       </div>
                     </div>
 
@@ -345,8 +359,8 @@ function PlagiarismPage() {
                       <div className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
                         <Github className="size-3 text-sky-400" /> Code
                       </div>
-                      <div className={`font-mono text-sm font-bold ${item.githubSimilarity >= 35 ? "text-rose-500" : "text-foreground"}`}>
-                        {item.githubSimilarity}%
+                      <div className={`font-mono text-sm font-bold ${item.githubSimilarity != null && item.githubSimilarity >= 35 ? "text-rose-500" : "text-foreground"}`}>
+                        {item.githubSimilarity != null ? `${item.githubSimilarity}%` : "—"}
                       </div>
                     </div>
 
@@ -354,15 +368,15 @@ function PlagiarismPage() {
                       <div className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-center gap-1">
                         <Globe className="size-3 text-emerald-400" /> Web
                       </div>
-                      <div className={`font-mono text-sm font-bold ${item.websiteSimilarity >= 35 ? "text-rose-500" : "text-foreground"}`}>
-                        {item.websiteSimilarity}%
+                      <div className={`font-mono text-sm font-bold ${item.websiteSimilarity != null && item.websiteSimilarity >= 35 ? "text-rose-500" : "text-foreground"}`}>
+                        {item.websiteSimilarity != null ? `${item.websiteSimilarity}%` : "—"}
                       </div>
                     </div>
 
                     <div className="rounded-xl bg-primary/10 border border-primary/20 px-3.5 py-2 text-center min-w-[80px]">
                       <div className="text-[10px] font-semibold text-primary uppercase">Overall Sim</div>
                       <div className="font-mono text-base font-black text-primary">
-                        {item.overallSimilarity}%
+                        {item.overallSimilarity != null ? `${item.overallSimilarity}%` : "—"}
                       </div>
                     </div>
 

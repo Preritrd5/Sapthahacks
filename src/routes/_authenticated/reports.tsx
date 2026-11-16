@@ -24,6 +24,7 @@ import { useTeamRows, type TeamRow } from "@/lib/queries";
 import { exportRows, downloadBlob } from "@/lib/export";
 import { COMPONENTS, COMPONENT_LABEL } from "@/lib/scoring";
 import { runComprehensivePlagiarismScan } from "@/lib/plagiarism";
+import { TeamReportCard } from "@/components/team-report-card";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({
@@ -45,6 +46,7 @@ function ReportsPage() {
   const [activeTab, setActiveTab] = useState<"qualified" | "complete">("qualified");
   const [cutoffScore, setCutoffScore] = useState<number>(65);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedReportTeam, setSelectedReportTeam] = useState<TeamRow | null>(null);
 
   // Plagiarism map for complete report
   const plagiarismMap = useMemo(() => runComprehensivePlagiarismScan(teams), [teams]);
@@ -259,13 +261,14 @@ function ReportsPage() {
                   <th className="p-3.5">Leader Email</th>
                   <th className="p-3.5">Project Title</th>
                   <th className="p-3.5 text-center">Overall Score</th>
-                  <th className="p-3.5 pr-4 text-center">Status</th>
+                  <th className="p-3.5 text-center">Status</th>
+                  <th className="p-3.5 pr-4 text-center">Scorecard</th>
                 </tr>
               </thead>
               <tbody>
                 {!filteredQualified.length ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
                       No teams meet the qualification cutoff of {cutoffScore} marks. Lower the cutoff or approve teams.
                     </td>
                   </tr>
@@ -293,10 +296,21 @@ function ReportsPage() {
                       <td className="p-3.5 text-center font-mono text-base font-black text-emerald-500">
                         {fmt(t.officialFinal ?? t.aiFinal)}
                       </td>
-                      <td className="p-3.5 pr-4 text-center">
+                      <td className="p-3.5 text-center">
                         <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 text-xs">
                           <CheckCircle2 className="size-3 mr-1" /> Qualified
                         </Badge>
+                      </td>
+                      <td className="p-3.5 pr-4 text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedReportTeam(t)}
+                          className="h-7 text-xs gap-1 border-primary/30 hover:bg-primary/10 hover:text-primary"
+                        >
+                          <FileText className="size-3 text-primary" />
+                          <span>Scorecard</span>
+                        </Button>
                       </td>
                     </tr>
                   ))
@@ -347,13 +361,14 @@ function ReportsPage() {
                   <th className="p-3 text-center">Plagiarism (Code/PDF/Web)</th>
                   <th className="p-3 text-center">Plagiarism Reason</th>
                   <th className="p-3 text-center">Status</th>
-                  <th className="p-3 pr-4">Remarks</th>
+                  <th className="p-3">Remarks</th>
+                  <th className="p-3 pr-4 text-center">Scorecard</th>
                 </tr>
               </thead>
               <tbody>
                 {!filteredComplete.length ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={10} className="p-8 text-center text-muted-foreground">
                       No evaluation results available.
                     </td>
                   </tr>
@@ -416,8 +431,20 @@ function ReportsPage() {
                           )}
                         </td>
 
-                        <td className="p-3 pr-4 max-w-36 truncate text-[11px] text-muted-foreground" title={t.remarks || t.override_reason || ""}>
+                        <td className="p-3 max-w-36 truncate text-[11px] text-muted-foreground" title={t.remarks || t.override_reason || ""}>
                           {t.remarks || t.override_reason || "—"}
+                        </td>
+
+                        <td className="p-3 pr-4 text-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedReportTeam(t)}
+                            className="h-6 px-2 text-[11px] gap-1 hover:bg-primary/10 hover:text-primary border border-border/50"
+                          >
+                            <FileText className="size-3 text-primary" />
+                            <span>Report</span>
+                          </Button>
                         </td>
                       </tr>
                     );
@@ -428,6 +455,15 @@ function ReportsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Official 1-Page Scorecard Modal */}
+      <TeamReportCard
+        team={selectedReportTeam}
+        isOpen={!!selectedReportTeam}
+        onClose={() => setSelectedReportTeam(null)}
+        plagiarismScore={selectedReportTeam ? plagiarismMap.get(selectedReportTeam.id)?.overallSimilarity : undefined}
+        plagiarismResult={selectedReportTeam ? plagiarismMap.get(selectedReportTeam.id) : undefined}
+      />
     </>
   );
 }

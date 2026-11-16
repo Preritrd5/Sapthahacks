@@ -31,9 +31,15 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 function createSupabaseAdminClient() {
   const DEFAULT_URL = "https://ojwjozleiqhqvsceueyn.supabase.co";
-  const DEFAULT_KEY = "sb_publishable_YR8WD9OHHGpNXSCb3BgD2A_otf-Sc-D";
   const SUPABASE_URL = process.env['SUPABASE_URL'] || process.env['VITE_SUPABASE_URL'] || DEFAULT_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env['SUPABASE_SERVICE_ROLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'] || process.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || DEFAULT_KEY;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      "Configuration error: SUPABASE_SERVICE_ROLE_KEY environment variable is required for privileged server admin operations. " +
+      "Refusing to fall back to publishable key to maintain fail-closed security."
+    );
+  }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     global: {

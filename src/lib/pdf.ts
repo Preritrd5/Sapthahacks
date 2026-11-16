@@ -3,7 +3,14 @@ export async function extractPdfText(file: File): Promise<string> {
   const pdfjs = await import("pdfjs-dist");
   const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+
+  // Pass verbosity: 0 (ERRORS only) to suppress non-fatal TrueType font hinting warnings (e.g. TT: undefined function: 32)
+  const doc = await pdfjs.getDocument({
+    data: await file.arrayBuffer(),
+    verbosity: 0,
+    stopAtErrors: false,
+  }).promise;
+
   let out = "";
   for (let i = 1; i <= Math.min(doc.numPages, 60); i++) {
     const page = await doc.getPage(i);
