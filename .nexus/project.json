@@ -1,0 +1,6 @@
+{
+  "name": "nexus",
+  "schemaVersion": 1,
+  "template": "nexus_tanstack_start_ts",
+  "revision": "nexus-project-current"
+}
