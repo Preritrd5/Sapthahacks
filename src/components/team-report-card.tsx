@@ -208,76 +208,76 @@ export function TeamReportCard({
   const BadgeIcon = plagBadgeInfo.icon;
 
   const cardContent = (
-    <div className="relative mx-auto w-full max-w-4xl bg-transparent">
-      {/* The Printable Official Document Container (page-break-inside: auto to allow natural multi-page flow) */}
+    <div className="relative mx-auto w-full max-w-4xl bg-transparent print:max-w-none print:w-full print:m-0 print:p-0">
+      {/* The Printable Official Document Container (page-break-inside: avoid for 1-page certificate) */}
       <div
         id="single-page-report"
-        className="print-container relative border border-border/80 bg-card p-5 sm:p-7 rounded-2xl shadow-sm text-foreground space-y-5 break-inside-auto"
+        className="print-container relative border border-border/80 bg-card p-5 sm:p-7 rounded-2xl shadow-sm text-foreground space-y-4 sm:space-y-5 break-inside-avoid print:space-y-0 print:border-slate-300 print:bg-white print:text-slate-900 print:shadow-none print:rounded"
       >
         {/* 1. Header Strip with Institutional Brand */}
-        <div className="report-header flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-primary/40 pb-4 gap-3 break-inside-avoid">
+        <div className="report-header flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-primary/40 pb-4 gap-3 break-inside-avoid print:pb-2 print:gap-2">
           <div className="flex items-center gap-3">
             <img
               src="/favicon.png"
               alt="Institutional Seal"
-              className="size-11 object-contain filter drop-shadow-sm shrink-0"
+              className="size-11 object-contain filter drop-shadow-sm shrink-0 print:size-8"
             />
             <div>
               <div className="text-[10px] font-bold tracking-widest text-primary uppercase font-mono">
                 Sapthagiri Innovation & Hackathon Assessment
               </div>
-              <h1 className="font-display text-xl sm:text-2xl font-black tracking-tight text-foreground">
+              <h1 className="font-display text-xl sm:text-2xl font-black tracking-tight text-foreground print:text-base">
                 INNOVEDGE 2026 OFFICIAL SCORECARD
               </h1>
             </div>
           </div>
 
           <div className="flex sm:flex-col items-start sm:items-end justify-between text-xs text-muted-foreground gap-1">
-            <div className="font-mono font-bold text-foreground bg-muted/80 px-2 py-0.5 rounded text-[11px] border border-border/50">
+            <div className="font-mono font-bold text-foreground bg-muted/80 px-2 py-0.5 rounded text-[11px] border border-border/50 print:text-[10px]">
               REF: {team.id.slice(0, 10).toUpperCase()}
             </div>
-            <div className="text-[11px] font-medium">
+            <div className="text-[11px] font-medium print:text-[10px]">
               Date: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
             </div>
           </div>
         </div>
 
         {/* 2. Team & Project Identification */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-xl bg-muted/30 border border-border/80 p-4 shadow-xs break-inside-avoid">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-xl bg-muted/30 border border-border/80 p-4 shadow-xs break-inside-avoid print:p-2.5 print:gap-2">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Team Name</div>
-            <div className="font-display text-lg font-bold text-foreground mt-0.5">{team.name}</div>
-            <div className="text-xs text-muted-foreground font-mono mt-0.5 break-all">{team.email}</div>
+            <div className="font-display text-lg font-bold text-foreground mt-0.5 print:text-sm">{team.name}</div>
+            <div className="text-xs text-muted-foreground font-mono mt-0.5 break-all print:text-[10px]">{team.email}</div>
           </div>
 
           <div className="md:col-span-2">
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Problem Statement & Track</div>
-            <div className="text-sm font-semibold text-foreground mt-0.5 line-clamp-2">
+            <div className="text-sm font-semibold text-foreground mt-0.5 line-clamp-2 print:text-xs">
               {team.project_title || "General Innovation & Rapid Prototyping Track"}
             </div>
-            <div className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed">
+            <div className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed print:text-[10px] print:mt-0.5">
               {team.project_description || "Comprehensive software and hardware technical proposal submission."}
             </div>
           </div>
         </div>
 
         {/* 3. Main Assessment Scores Table (with dynamic weights & max marks) */}
-        <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs break-inside-avoid">
-          <div className="bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary border-b border-border/80 flex items-center justify-between">
+        <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs break-inside-avoid print:rounded">
+          <div className="bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary border-b border-border/80 flex items-center justify-between print:px-3 print:py-1">
             <span>Component Rubric Breakdown</span>
-            <span className="text-[10px] font-mono font-normal text-muted-foreground lowercase">
+            <span className="text-[10px] font-mono font-normal text-muted-foreground lowercase print:text-[9px]">
               weights: pdf {weights.pdf}% · github {weights.github}% · website {weights.website}%
             </span>
           </div>
           <table className="w-full text-xs">
             <thead className="bg-muted/40 text-muted-foreground font-semibold border-b border-border/80">
               <tr>
-                <th className="p-3 text-left">Evaluation Component</th>
-                <th className="p-3 text-left">Weight</th>
-                <th className="p-3 text-right">Max Marks</th>
-                <th className="p-3 text-right">AI Raw</th>
-                <th className="p-3 text-right font-bold text-foreground">Final Marks</th>
-                <th className="p-3 text-center">Status</th>
+                <th className="p-3 text-left print:p-1.5">Evaluation Component</th>
+                <th className="p-3 text-left print:p-1.5">Weight</th>
+                <th className="p-3 text-right print:p-1.5">Max Marks</th>
+                <th className="p-3 text-right print:p-1.5">AI Raw</th>
+                <th className="p-3 text-right font-bold text-foreground print:p-1.5">Final Marks</th>
+                <th className="p-3 text-center print:p-1.5">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -287,19 +287,19 @@ export function TeamReportCard({
                 const maxMarks = ev?.max_score ?? 100;
                 return (
                   <tr key={c} className="hover:bg-muted/10">
-                    <td className="p-3 font-semibold text-foreground flex items-center gap-2">
-                      <span className="size-2 rounded-full bg-primary/80" />
+                    <td className="p-3 font-semibold text-foreground flex items-center gap-2 print:p-1.5">
+                      <span className="size-2 rounded-full bg-primary/80 shrink-0" />
                       {COMPONENT_LABEL[c]}
                     </td>
-                    <td className="p-3 font-mono text-muted-foreground">{weight}%</td>
-                    <td className="p-3 text-right font-mono text-muted-foreground">{maxMarks}</td>
-                    <td className="p-3 text-right font-mono text-muted-foreground">
+                    <td className="p-3 font-mono text-muted-foreground print:p-1.5">{weight}%</td>
+                    <td className="p-3 text-right font-mono text-muted-foreground print:p-1.5">{maxMarks}</td>
+                    <td className="p-3 text-right font-mono text-muted-foreground print:p-1.5">
                       {ev?.ai_score != null ? fmt(ev.ai_score) : "—"}
                     </td>
-                    <td className="p-3 text-right font-mono font-bold text-sm text-foreground">
+                    <td className="p-3 text-right font-mono font-bold text-sm text-foreground print:p-1.5 print:text-xs">
                       {ev?.final_score != null ? fmt(ev.final_score) : "—"}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="p-3 text-center print:p-1.5">
                       <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                         ev?.status === "approved"
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
@@ -318,9 +318,9 @@ export function TeamReportCard({
         </div>
 
         {/* 4. Result Banner: Final Score & Qualification Decision */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 break-inside-avoid">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 break-inside-avoid print:gap-2.5">
           {/* Aggregate Event Score */}
-          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-col justify-between">
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-col justify-between print:p-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
                 Weighted Aggregate Event Score
@@ -336,21 +336,21 @@ export function TeamReportCard({
               </span>
             </div>
 
-            <div className="my-2.5 flex items-baseline gap-2">
-              <span className="font-display text-4xl font-black text-foreground tracking-tight">
+            <div className="my-2 flex items-baseline gap-2 print:my-1">
+              <span className="font-display text-4xl font-black text-foreground tracking-tight print:text-2xl">
                 {scoreDisplayValue != null ? fmt(scoreDisplayValue) : "—"}
               </span>
-              <span className="text-sm font-semibold text-muted-foreground font-mono">/ 100.0</span>
+              <span className="text-sm font-semibold text-muted-foreground font-mono print:text-xs">/ 100.0</span>
             </div>
 
-            <div className="text-[11px] text-muted-foreground leading-tight">
+            <div className="text-[11px] text-muted-foreground leading-tight print:text-[9px]">
               Formula: (PDF × {weights.pdf}%) + (GitHub × {weights.github}%) + (Website × {weights.website}%)
               {team.final_override != null && " • (Includes Admin Override)"}
             </div>
           </div>
 
           {/* Qualification Status */}
-          <div className={`rounded-xl border p-4 flex flex-col justify-between ${
+          <div className={`rounded-xl border p-4 flex flex-col justify-between print:p-2.5 ${
             isQualified
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
               : isRejected
@@ -361,32 +361,32 @@ export function TeamReportCard({
               Official Qualification Status
             </div>
 
-            <div className="my-2 flex items-center gap-2.5">
+            <div className="my-1.5 flex items-center gap-2 print:my-0.5">
               {isQualified ? (
                 <>
-                  <CheckCircle2 className="size-7 text-emerald-500 shrink-0" />
-                  <span className="font-display text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+                  <CheckCircle2 className="size-6 text-emerald-500 shrink-0 print:size-5" />
+                  <span className="font-display text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight print:text-lg">
                     QUALIFIED FOR FINALS
                   </span>
                 </>
               ) : isRejected ? (
                 <>
-                  <XCircle className="size-7 text-rose-500 shrink-0" />
-                  <span className="font-display text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
+                  <XCircle className="size-6 text-rose-500 shrink-0 print:size-5" />
+                  <span className="font-display text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight print:text-lg">
                     NOT QUALIFIED / REJECTED
                   </span>
                 </>
               ) : (
                 <>
-                  <Clock className="size-7 text-amber-500 shrink-0" />
-                  <span className="font-display text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
+                  <Clock className="size-6 text-amber-500 shrink-0 print:size-5" />
+                  <span className="font-display text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight print:text-lg">
                     UNDER MODERATION REVIEW
                   </span>
                 </>
               )}
             </div>
 
-            <div className="text-[11px] opacity-85 leading-tight">
+            <div className="text-[11px] opacity-85 leading-tight print:text-[9px]">
               {isQualified
                 ? "Shortlisted for in-person evaluation & grand jury presentation."
                 : isRejected
@@ -397,8 +397,8 @@ export function TeamReportCard({
         </div>
 
         {/* 5. Originality & Plagiarism Verification (Evidence-grounded status) */}
-        <div className="rounded-xl border border-border/80 p-4 bg-card shadow-xs text-xs break-inside-avoid">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+        <div className="rounded-xl border border-border/80 p-4 bg-card shadow-xs text-xs break-inside-avoid print:p-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-2 font-bold uppercase text-foreground">
               <BadgeIcon className="size-4 shrink-0" />
               <span>Originality & Plagiarism Verification</span>
@@ -411,11 +411,11 @@ export function TeamReportCard({
             </div>
           </div>
 
-          <p className="text-muted-foreground leading-relaxed">
+          <p className="text-muted-foreground leading-relaxed print:text-[10px]">
             {plagDescription}
           </p>
 
-          <div className="mt-2.5 pt-2 border-t border-border/50 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
+          <div className="mt-2 pt-1.5 border-t border-border/50 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground print:mt-1 print:pt-1">
             <span>
               Methodology: {plagiarismResult?.methodology || "Multi-modal token-shingling Jaccard coefficient and repository cross-matching."}
             </span>
@@ -428,27 +428,27 @@ export function TeamReportCard({
         </div>
 
         {/* 6. INTELLIGENT EVALUATION INSIGHTS SECTION (3 STRUCTURED CARDS) */}
-        <div className="space-y-2.5 break-inside-avoid">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1">
-            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Sparkles className="size-3.5 text-primary" />
+        <div className="space-y-2 break-inside-avoid print:space-y-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-0.5">
+            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 print:text-[10px]">
+              <Sparkles className="size-3.5 text-primary print:size-3" />
               <span>Evaluation Insights & Jury Recommendations</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 print:gap-2">
             {/* Card 1: Key Strengths (Emerald) */}
-            <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 dark:bg-emerald-500/15 p-4 flex flex-col justify-between break-inside-avoid shadow-xs">
+            <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 dark:bg-emerald-500/15 p-3.5 flex flex-col justify-between break-inside-avoid shadow-xs print:p-2.5">
               <div>
-                <div className="flex items-center gap-2 mb-2.5 pb-2 border-b border-emerald-500/20 text-emerald-800 dark:text-emerald-300">
-                  <Trophy className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="font-display font-bold text-xs uppercase tracking-wider">
+                <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-emerald-500/20 text-emerald-800 dark:text-emerald-300">
+                  <Trophy className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="font-display font-bold text-xs uppercase tracking-wider print:text-[10px]">
                     Key Strengths
                   </span>
                 </div>
-                <ul className="space-y-2.5 leading-relaxed">
+                <ul className="space-y-2 leading-relaxed print:space-y-1">
                   {insights.strengths.length === 0 ? (
-                    <li className="text-[11px] text-muted-foreground italic">
+                    <li className="text-[11px] text-muted-foreground italic print:text-[9px]">
                       No specific strengths flagged yet. Complete evaluation required.
                     </li>
                   ) : (
@@ -459,19 +459,19 @@ export function TeamReportCard({
                       const source = isObj ? item.source : null;
                       return (
                         <li key={idx} className="space-y-0.5">
-                          <div className="flex items-baseline justify-between gap-1.5 font-semibold text-emerald-950 dark:text-emerald-200 text-[11px]">
+                          <div className="flex items-baseline justify-between gap-1.5 font-semibold text-emerald-950 dark:text-emerald-200 text-[11px] print:text-[9.5px]">
                             <div className="flex items-baseline gap-1.5">
                               <span className="size-1.5 rounded-full bg-emerald-500 shrink-0 self-center" />
                               <span className="leading-snug">{title}</span>
                             </div>
                             {source && (
-                              <span className="text-[9px] font-mono font-normal opacity-70 border border-emerald-500/30 px-1 py-0.2 rounded shrink-0">
+                              <span className="text-[9px] font-mono font-normal opacity-70 border border-emerald-500/30 px-1 py-0.2 rounded shrink-0 print:hidden">
                                 {source}
                               </span>
                             )}
                           </div>
                           {desc && (
-                            <p className="text-[10.5px] text-emerald-950/85 dark:text-emerald-100/80 pl-3 leading-relaxed">
+                            <p className="text-[10.5px] text-emerald-950/85 dark:text-emerald-100/80 pl-3 leading-relaxed print:text-[8.5px] print:pl-2.5">
                               {desc}
                             </p>
                           )}
@@ -484,17 +484,17 @@ export function TeamReportCard({
             </div>
 
             {/* Card 2: Areas to Improve (Rose) */}
-            <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 dark:bg-rose-500/15 p-4 flex flex-col justify-between break-inside-avoid shadow-xs">
+            <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 dark:bg-rose-500/15 p-3.5 flex flex-col justify-between break-inside-avoid shadow-xs print:p-2.5">
               <div>
-                <div className="flex items-center gap-2 mb-2.5 pb-2 border-b border-rose-500/20 text-rose-800 dark:text-rose-300">
-                  <AlertTriangle className="size-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                  <span className="font-display font-bold text-xs uppercase tracking-wider">
+                <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-rose-500/20 text-rose-800 dark:text-rose-300">
+                  <AlertTriangle className="size-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                  <span className="font-display font-bold text-xs uppercase tracking-wider print:text-[10px]">
                     Areas to Improve
                   </span>
                 </div>
-                <ul className="space-y-2.5 leading-relaxed">
+                <ul className="space-y-2 leading-relaxed print:space-y-1">
                   {insights.areasToImprove.length === 0 ? (
-                    <li className="text-[11px] text-muted-foreground italic">
+                    <li className="text-[11px] text-muted-foreground italic print:text-[9px]">
                       No specific improvement areas flagged yet. Complete evaluation required.
                     </li>
                   ) : (
@@ -502,17 +502,16 @@ export function TeamReportCard({
                       const isObj = typeof item === "object" && item !== null;
                       const title = isObj ? item.title : String(item);
                       const desc = isObj ? item.description : null;
-                      const source = isObj ? item.source : null;
                       return (
                         <li key={idx} className="space-y-0.5">
-                          <div className="flex items-baseline justify-between gap-1.5 font-semibold text-rose-950 dark:text-rose-200 text-[11px]">
+                          <div className="flex items-baseline justify-between gap-1.5 font-semibold text-rose-950 dark:text-rose-200 text-[11px] print:text-[9.5px]">
                             <div className="flex items-baseline gap-1.5">
                               <span className="size-1.5 rounded-full bg-rose-500 shrink-0 self-center" />
                               <span className="leading-snug">{title}</span>
                             </div>
                           </div>
                           {desc && (
-                            <p className="text-[10.5px] text-rose-950/85 dark:text-rose-100/80 pl-3 leading-relaxed">
+                            <p className="text-[10.5px] text-rose-950/85 dark:text-rose-100/80 pl-3 leading-relaxed print:text-[8.5px] print:pl-2.5">
                               {desc}
                             </p>
                           )}
@@ -525,17 +524,17 @@ export function TeamReportCard({
             </div>
 
             {/* Card 3: Suggestions (Sky) */}
-            <div className="rounded-xl border border-sky-500/35 bg-sky-500/10 dark:bg-sky-500/15 p-4 flex flex-col justify-between break-inside-avoid shadow-xs">
+            <div className="rounded-xl border border-sky-500/35 bg-sky-500/10 dark:bg-sky-500/15 p-3.5 flex flex-col justify-between break-inside-avoid shadow-xs print:p-2.5">
               <div>
-                <div className="flex items-center gap-2 mb-2.5 pb-2 border-b border-sky-500/20 text-sky-800 dark:text-sky-300">
-                  <Sparkles className="size-4 text-sky-600 dark:text-sky-400 shrink-0" />
-                  <span className="font-display font-bold text-xs uppercase tracking-wider">
+                <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-sky-500/20 text-sky-800 dark:text-sky-300">
+                  <Sparkles className="size-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                  <span className="font-display font-bold text-xs uppercase tracking-wider print:text-[10px]">
                     Suggestions
                   </span>
                 </div>
-                <ul className="space-y-2.5 leading-relaxed">
+                <ul className="space-y-2 leading-relaxed print:space-y-1">
                   {insights.suggestions.length === 0 ? (
-                    <li className="text-[11px] text-muted-foreground italic">
+                    <li className="text-[11px] text-muted-foreground italic print:text-[9px]">
                       No action recommendations generated yet. Complete evaluation required.
                     </li>
                   ) : (
@@ -546,17 +545,17 @@ export function TeamReportCard({
                       const related = isObj ? item.relatedIssue : null;
                       return (
                         <li key={idx} className="space-y-0.5">
-                          <div className="flex items-baseline gap-1.5 font-semibold text-sky-950 dark:text-sky-200 text-[11px]">
+                          <div className="flex items-baseline gap-1.5 font-semibold text-sky-950 dark:text-sky-200 text-[11px] print:text-[9.5px]">
                             <span className="size-1.5 rounded-full bg-sky-500 shrink-0 self-center" />
                             <span className="leading-snug">{title}</span>
                           </div>
                           {desc && (
-                            <p className="text-[10.5px] text-sky-950/85 dark:text-sky-100/80 pl-3 leading-relaxed">
+                            <p className="text-[10.5px] text-sky-950/85 dark:text-sky-100/80 pl-3 leading-relaxed print:text-[8.5px] print:pl-2.5">
                               {desc}
                             </p>
                           )}
                           {related && (
-                            <div className="text-[9px] font-mono text-sky-800 dark:text-sky-300 pl-3 opacity-75">
+                            <div className="text-[9px] font-mono text-sky-800 dark:text-sky-300 pl-3 opacity-75 print:hidden">
                               Addresses: {related}
                             </div>
                           )}
@@ -571,11 +570,11 @@ export function TeamReportCard({
         </div>
 
         {/* 7. Verification Footer & Authority Sign-off */}
-        <div className="report-footer pt-4 border-t-2 border-border/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-muted-foreground break-inside-avoid">
+        <div className="report-footer pt-3 border-t-2 border-border/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-muted-foreground break-inside-avoid print:pt-2 print:gap-2">
           <div>
-            <div className="font-semibold text-foreground">INNOVEDGE Hackathon Committee</div>
-            <div>Sapthagiri Innovation & Entrepreneurship Development Club</div>
-            <div className="text-[10px] mt-0.5">
+            <div className="font-semibold text-foreground print:text-[10px]">INNOVEDGE Hackathon Committee</div>
+            <div className="print:text-[9px]">Sapthagiri Innovation & Entrepreneurship Development Club</div>
+            <div className="text-[10px] mt-0.5 print:text-[8px]">
               Certified Assessment Report • Digitally signed & verified
             </div>
           </div>
@@ -584,13 +583,13 @@ export function TeamReportCard({
             <img
               src="/favicon.png"
               alt="Verification Crest"
-              className="size-10 object-contain filter drop-shadow-sm opacity-90 shrink-0"
+              className="size-10 object-contain filter drop-shadow-sm opacity-90 shrink-0 print:size-7"
             />
             <div className="text-left sm:text-right">
-              <div className="font-mono text-xs font-semibold text-foreground">
+              <div className="font-mono text-xs font-semibold text-foreground print:text-[10px]">
                 Date: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
               </div>
-              <div className="mt-0.5 text-[10px] text-primary font-semibold uppercase tracking-wider font-mono">
+              <div className="mt-0.5 text-[10px] text-primary font-semibold uppercase tracking-wider font-mono print:text-[8px]">
                 Innovation • Rigor • Excellence
               </div>
             </div>
@@ -603,7 +602,7 @@ export function TeamReportCard({
   if (isOpen !== undefined) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
-        <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden border border-border/80 shadow-2xl bg-card">
+        <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden border border-border/80 shadow-2xl bg-card print:border-none print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full print:static print:translate-x-0 print:translate-y-0">
           {/* Fixed Header Bar with Title, Regenerate AI Insights and Print Button */}
           <div className="no-print flex items-center justify-between px-5 py-3 border-b border-border/60 bg-card/95 backdrop-blur shrink-0 z-20">
             <DialogHeader className="p-0 space-y-0">
@@ -639,7 +638,7 @@ export function TeamReportCard({
           </div>
 
           {/* Single Scrollable Container (NO DOUBLE SCROLLBARS) */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-muted/20">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-muted/20 print:overflow-visible print:p-0 print:m-0 print:bg-transparent">
             {cardContent}
           </div>
         </DialogContent>

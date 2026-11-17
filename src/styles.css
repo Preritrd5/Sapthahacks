@@ -245,9 +245,32 @@
 }
 
 @media print {
-  /* Complete Print Isolation: Hide everything except the Official Report Card */
+  @page {
+    size: A4 portrait;
+    margin: 6mm 8mm;
+  }
+
+  /* 1. Global Reset for Print Canvas */
+  html,
+  body {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 2. Complete Isolation: Hide everything except #single-page-report and its parent lineage */
   body * {
-    visibility: hidden !important;
+    visibility: hidden;
   }
 
   /* Show only the targeted report card element and all its children */
@@ -256,62 +279,230 @@
     visibility: visible !important;
   }
 
-  /* Collapse any non-report top-level elements to prevent empty page generation */
+  /* Collapse any non-report top-level containers to prevent blank page generation */
   body:has(#single-page-report) > *:not(:has(#single-page-report)) {
     display: none !important;
   }
 
-  /* Clean up dialog/modal wrappers in print so #single-page-report flows naturally */
-  [data-radix-portal],
-  [role="dialog"],
-  [data-state="open"] {
-    position: static !important;
-    overflow: visible !important;
-    display: block !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    transform: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
+  /* Suppress overlays, backdrops, close buttons, action bars, and non-print tools */
+  [data-radix-dialog-overlay],
+  [data-radix-portal] > [data-state]:not([role="dialog"]),
+  .fixed.inset-0,
+  button,
+  .no-print {
+    display: none !important;
   }
 
-  /* Position in normal flow and allow multi-page pagination without clipping */
-  #single-page-report {
-    position: relative !important;
-    left: auto !important;
-    top: auto !important;
+  /* 3. Clean up Radix Portal & Dialog Wrappers */
+  [data-radix-portal] {
+    display: block !important;
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  [role="dialog"],
+  div[data-state="open"][role="dialog"],
+  [data-radix-portal] [role="dialog"] {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+
+    /* CRITICAL FIX: Reset BOTH modern CSS translate AND transform to eliminate horizontal offset */
+    translate: none !important;
+    translate: 0 0 !important;
+    transform: none !important;
+    --tw-translate-x: 0 !important;
+    --tw-translate-y: 0 !important;
+    left: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    inset: auto !important;
+  }
+
+  /* Neutralize inner scrollable dialog wrappers */
+  [role="dialog"] > div,
+  [role="dialog"] .overflow-y-auto {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+
+  /* 4. Target #single-page-report with Exact Centered Printable Dimensions */
+  #single-page-report {
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 194mm !important; /* Matches standard A4 printable width (210mm - 2*8mm) */
     margin: 0 auto !important;
-    padding: 8mm 10mm !important;
+    padding: 3.5mm 5mm !important;
     background: #ffffff !important;
     color: #0f172a !important;
     border: 1px solid #cbd5e1 !important;
-    border-radius: 8px !important;
+    border-radius: 6px !important;
     box-shadow: none !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    page-break-inside: auto !important;
-    break-inside: auto !important;
-  }
-
-  /* Prevent page breaks inside cards, table rows, and signatures */
-  #single-page-report tr,
-  #single-page-report .rounded-xl,
-  #single-page-report .report-header,
-  #single-page-report .report-footer,
-  #single-page-report .break-inside-avoid {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    translate: none !important;
+    translate: 0 0 !important;
+    transform: none !important;
+    left: auto !important;
+    top: auto !important;
   }
 
-  /* Force light theme colors on report elements during print */
+  /* Compact Spacing Between Report Sections (Fits 1 Sheet of A4) */
+  #single-page-report > * + * {
+    margin-top: 2.2mm !important;
+  }
+
+  /* Header Section */
+  #single-page-report .report-header {
+    padding-bottom: 2mm !important;
+    margin-bottom: 1.5mm !important;
+    border-bottom: 1.5px solid #0f172a !important;
+    gap: 2mm !important;
+  }
+
+  #single-page-report .report-header h1 {
+    font-size: 13pt !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.01em !important;
+    color: #0f172a !important;
+  }
+
+  #single-page-report .report-header img {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* Team & Problem Statement Identification Box */
+  #single-page-report .grid-cols-1.md\:grid-cols-3 {
+    display: grid !important;
+    grid-template-columns: 1fr 2fr !important;
+    gap: 2mm !important;
+  }
+
+  #single-page-report .rounded-xl {
+    padding: 2.5mm 3.5mm !important;
+    border-radius: 4px !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Component Rubric Breakdown Table */
+  #single-page-report table {
+    width: 100% !important;
+    font-size: 8pt !important;
+    border-collapse: collapse !important;
+  }
+
+  #single-page-report table th,
+  #single-page-report table td {
+    padding: 1.5mm 2.5mm !important;
+    line-height: 1.25 !important;
+  }
+
+  #single-page-report table th {
+    font-size: 7.5pt !important;
+  }
+
+  /* 2-Column Banner: Aggregate Score & Qualification Decision */
+  #single-page-report .grid-cols-1.md\:grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 2.5mm !important;
+  }
+
+  #single-page-report .text-4xl {
+    font-size: 22pt !important;
+    line-height: 1 !important;
+  }
+
+  #single-page-report .text-2xl {
+    font-size: 12pt !important;
+    line-height: 1.1 !important;
+  }
+
+  /* Plagiarism Verification Card */
+  #single-page-report p {
+    font-size: 7.5pt !important;
+    line-height: 1.3 !important;
+    margin-top: 1mm !important;
+  }
+
+  /* 3-Card Intelligent Evaluation Insights */
+  #single-page-report .space-y-2\.5 > .grid-cols-1.md\:grid-cols-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 2mm !important;
+  }
+
+  #single-page-report ul {
+    gap: 1.2mm !important;
+  }
+
+  #single-page-report li {
+    font-size: 7.5pt !important;
+    line-height: 1.2 !important;
+  }
+
+  #single-page-report li p {
+    font-size: 6.8pt !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Verification Footer & Institutional Seal */
+  #single-page-report .report-footer {
+    padding-top: 2mm !important;
+    margin-top: 2.5mm !important;
+    border-top: 1.5px solid #cbd5e1 !important;
+    font-size: 7pt !important;
+    gap: 2mm !important;
+  }
+
+  #single-page-report .report-footer img {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  /* Strict Light-Theme Color Normalization for Print / PDF */
   #single-page-report .bg-card,
   #single-page-report .bg-background {
     background-color: #ffffff !important;
     color: #0f172a !important;
+  }
+
+  #single-page-report .bg-muted\/30,
+  #single-page-report .bg-muted\/40,
+  #single-page-report .bg-muted\/80 {
+    background-color: #f8fafc !important;
+  }
+
+  #single-page-report .bg-primary\/5,
+  #single-page-report .bg-primary\/10 {
+    background-color: #f1f5f9 !important;
   }
 
   #single-page-report .text-foreground {
@@ -324,27 +515,8 @@
 
   #single-page-report .border-border,
   #single-page-report .border-border\/80,
-  #single-page-report .border-border\/60 {
-    border-color: #e2e8f0 !important;
-  }
-
-  /* Reset outer shell overflow and modals */
-  html,
-  body {
-    width: 100% !important;
-    height: auto !important;
-    min-height: auto !important;
-    overflow: visible !important;
-    background: #ffffff !important;
-    background-image: none !important;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  @page {
-    size: A4 portrait;
-    margin: 8mm;
+  #single-page-report .border-border\/60,
+  #single-page-report .border-border\/50 {
+    border-color: #cbd5e1 !important;
   }
 }
