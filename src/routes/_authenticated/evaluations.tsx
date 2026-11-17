@@ -9,9 +9,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { TableSkeleton, CardGridSkeleton } from "@/components/ui/skeleton";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { EvaluationProgressModal } from "@/components/evaluation-progress-modal";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
-import { FileText, Eye, Search, FileDown, Play, Loader2, Sliders, Github, Globe, ExternalLink, RotateCw } from "lucide-react";
+import {
+  FileText,
+  Eye,
+  Search,
+  FileDown,
+  Play,
+  Loader2,
+  Sliders,
+  Github,
+  Globe,
+  ExternalLink,
+  RotateCw,
+  Trophy,
+  Target,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 import { TeamReportCard } from "@/components/team-report-card";
 import { ScoreBreakdownModal } from "@/components/score-breakdown-modal";
 import { EditScoreModal } from "@/components/edit-score-modal";
@@ -109,6 +127,26 @@ function EvaluationsPage() {
     return "text-rose-500 font-bold";
   };
 
+  const evaluatedCount = useMemo(() => {
+    return teams.filter((t) => t.officialFinal != null || t.aiFinal != null).length;
+  }, [teams]);
+
+  const topScore = useMemo(() => {
+    const scores = teams.map((t) => t.officialFinal ?? t.aiFinal ?? 0);
+    return scores.length ? Math.max(...scores) : 0;
+  }, [teams]);
+
+  const moderatedCount = useMemo(() => {
+    return teams.filter((t) => t.officialFinal != null || t.final_status === "approved").length;
+  }, [teams]);
+
+  const flaggedCount = useMemo(() => {
+    return teams.filter((t) => {
+      const plag = plagiarismMap.get(t.id);
+      return (plag?.overallSimilarity ?? 0) >= 35 || t.final_status === "rejected";
+    }).length;
+  }, [teams, plagiarismMap]);
+
   return (
     <>
       <FadeIn>
@@ -116,13 +154,76 @@ function EvaluationsPage() {
           title="Team Evaluations"
           desc="Consolidated final scores for every registered team across all rubric components."
         >
-          <Button size="sm" variant="outline" asChild>
+          <Button size="sm" variant="outline" asChild className="transition-all hover:scale-105">
             <Link to="/reports">
               <FileDown className="size-4 mr-1.5" /> Export Reports
             </Link>
           </Button>
         </PageHeader>
       </FadeIn>
+
+      {/* Top 4 Interactive 3D Showcase Cards */}
+      <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
+        <StaggerItem>
+          <GlassCard3D glowColor="primary" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Evaluated Projects
+              </span>
+              <div className="size-7 rounded-lg bg-primary/15 border border-primary/30 grid place-items-center text-primary shrink-0 group-hover:scale-110 transition-transform">
+                <Target className="size-3.5" />
+              </div>
+            </div>
+            <div className="my-2 font-mono text-2xl font-bold">{evaluatedCount} / {teams.length}</div>
+            <div className="text-[11px] text-muted-foreground">Scored submissions</div>
+          </GlassCard3D>
+        </StaggerItem>
+
+        <StaggerItem>
+          <GlassCard3D glowColor="amber" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-500">
+                Top Score Achieved
+              </span>
+              <div className="size-7 rounded-lg bg-amber-500/15 border border-amber-500/30 grid place-items-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
+                <Trophy className="size-3.5" />
+              </div>
+            </div>
+            <div className="my-2 font-mono text-2xl font-bold text-amber-500">{fmt(topScore)} <span className="text-xs text-muted-foreground font-normal">/ 100</span></div>
+            <div className="text-[11px] text-muted-foreground">Highest event mark</div>
+          </GlassCard3D>
+        </StaggerItem>
+
+        <StaggerItem>
+          <GlassCard3D glowColor="emerald" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-500">
+                Finalized / Approved
+              </span>
+              <div className="size-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 grid place-items-center text-emerald-500 shrink-0 group-hover:scale-110 transition-transform">
+                <CheckCircle2 className="size-3.5" />
+              </div>
+            </div>
+            <div className="my-2 font-mono text-2xl font-bold text-emerald-500">{moderatedCount}</div>
+            <div className="text-[11px] text-muted-foreground">Official decisions locked</div>
+          </GlassCard3D>
+        </StaggerItem>
+
+        <StaggerItem>
+          <GlassCard3D glowColor="rose" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-500">
+                Review Required
+              </span>
+              <div className="size-7 rounded-lg bg-rose-500/15 border border-rose-500/30 grid place-items-center text-rose-500 shrink-0 group-hover:scale-110 transition-transform">
+                <AlertTriangle className="size-3.5" />
+              </div>
+            </div>
+            <div className="my-2 font-mono text-2xl font-bold text-rose-500">{flaggedCount}</div>
+            <div className="text-[11px] text-muted-foreground">Integrity or score flags</div>
+          </GlassCard3D>
+        </StaggerItem>
+      </StaggerContainer>
 
       {/* Filter and Search Bar */}
       <div className="mb-4 flex flex-col sm:flex-row gap-2">
@@ -152,7 +253,9 @@ function EvaluationsPage() {
 
       {/* Mobile Friendly Cards (< md) */}
       <div className="grid grid-cols-1 gap-3 md:hidden">
-        {!list.length ? (
+        {rows.isLoading ? (
+          <CardGridSkeleton count={4} className="grid-cols-1" />
+        ) : !list.length ? (
           <div className="glass rounded-2xl p-8 text-center text-muted-foreground text-xs">
             No evaluations found matching your filters.
           </div>
@@ -264,29 +367,34 @@ function EvaluationsPage() {
       </div>
 
       {/* Desktop Table View (>= md) */}
-      <div className="hidden md:block glass overflow-x-auto rounded-2xl border border-border/60">
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase text-muted-foreground bg-muted/30">
-            <tr className="border-b border-border/80">
-              <th className="p-3.5 pl-4">Team & Project</th>
-              <th className="p-3.5 text-center">Project PDF (30%)</th>
-              <th className="p-3.5 text-center">GitHub Code (40%)</th>
-              <th className="p-3.5 text-center">Deployed Website (30%)</th>
-              <th className="p-3.5 text-center font-bold text-foreground">Final Score / 100</th>
-              <th className="p-3.5 text-center">Status</th>
-              <th className="p-3.5 pr-4 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!list.length ? (
-              <tr>
-                <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                  No evaluations found matching your filters.
-                </td>
+      {rows.isLoading ? (
+        <div className="hidden md:block">
+          <TableSkeleton rows={7} cols={7} />
+        </div>
+      ) : (
+        <div className="hidden md:block glass overflow-x-auto rounded-2xl border border-border/60">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase text-muted-foreground bg-muted/30">
+              <tr className="border-b border-border/80">
+                <th className="p-3.5 pl-4">Team & Project</th>
+                <th className="p-3.5 text-center">Project PDF (30%)</th>
+                <th className="p-3.5 text-center">GitHub Code (40%)</th>
+                <th className="p-3.5 text-center">Deployed Website (30%)</th>
+                <th className="p-3.5 text-center font-bold text-foreground">Final Score / 100</th>
+                <th className="p-3.5 text-center">Status</th>
+                <th className="p-3.5 pr-4 text-center">Actions</th>
               </tr>
-            ) : (
+            </thead>
+            <tbody>
+              {!list.length ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    No evaluations found matching your filters.
+                  </td>
+                </tr>
+              ) : (
               list.map((t) => (
-                <tr key={t.id} className="border-b border-border/40 hover:bg-muted/20 transition-colors">
+                <tr key={t.id} className="border-b border-border/40 hover:bg-muted/35 transition-all duration-200 group">
                   <td className="p-3.5 pl-4 max-w-xs">
                     <Link to="/teams/$id" params={{ id: t.id }} className="font-bold text-foreground hover:text-primary truncate block">
                       {t.name}
@@ -429,6 +537,7 @@ function EvaluationsPage() {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Live Evaluation Progress & Completion Modal */}
       <EvaluationProgressModal

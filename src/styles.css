@@ -244,6 +244,147 @@
   background-image: var(--gradient-brand);
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@utility text-gradient-animated {
+  background: linear-gradient(135deg, oklch(0.58 0.19 38), oklch(0.72 0.17 60), oklch(0.68 0.16 150), oklch(0.58 0.19 38));
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 8s ease infinite;
+}
+
+@keyframes pulse-beacon {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(217, 90, 43, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(217, 90, 43, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(217, 90, 43, 0);
+  }
+}
+
+.beacon-pulse {
+  animation: pulse-beacon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-float {
+  animation: float-gentle 3.5s ease-in-out infinite;
+}
+
+@utility glass-glow {
+  background: color-mix(in oklab, var(--card) 85%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid color-mix(in oklab, var(--primary) 25%, var(--border));
+  box-shadow: 0 12px 36px -10px rgba(217, 90, 43, 0.12);
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  &:hover {
+    transform: translateY(-4px) scale(1.015);
+    box-shadow: 0 20px 45px -10px rgba(217, 90, 43, 0.22);
+    border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
+  }
+}
+
+.podium-gold {
+  border-color: rgba(234, 179, 8, 0.4) !important;
+  box-shadow: 0 10px 30px -8px rgba(234, 179, 8, 0.25) !important;
+}
+.podium-gold:hover {
+  border-color: rgba(234, 179, 8, 0.7) !important;
+  box-shadow: 0 16px 40px -6px rgba(234, 179, 8, 0.35) !important;
+}
+
+.podium-silver {
+  border-color: rgba(148, 163, 184, 0.4) !important;
+  box-shadow: 0 10px 30px -8px rgba(148, 163, 184, 0.2) !important;
+}
+.podium-silver:hover {
+  border-color: rgba(148, 163, 184, 0.7) !important;
+  box-shadow: 0 16px 40px -6px rgba(148, 163, 184, 0.3) !important;
+}
+
+.podium-bronze {
+  border-color: rgba(217, 119, 6, 0.4) !important;
+  box-shadow: 0 10px 30px -8px rgba(217, 119, 6, 0.2) !important;
+}
+.podium-bronze:hover {
+  border-color: rgba(217, 119, 6, 0.7) !important;
+  box-shadow: 0 16px 40px -6px rgba(217, 119, 6, 0.3) !important;
+}
+
+/* Custom Scrollbar for Modals and Panes */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 25%, transparent) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 25%, transparent);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--primary) 65%, transparent);
+}
+
+/* Prevent background double-scrolling when dialog modal is open */
+body:has([role="dialog"]),
+body[data-scroll-locked] {
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+}
+
+@media screen {
+  #innovedge-print-portal {
+    display: none !important;
+  }
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -268,97 +409,53 @@
     print-color-adjust: exact !important;
   }
 
-  /* 2. Complete Isolation: Hide everything except #single-page-report and its parent lineage */
-  body * {
-    visibility: hidden;
-  }
-
-  /* Show only the targeted report card element and all its children */
-  #single-page-report,
-  #single-page-report * {
-    visibility: visible !important;
-  }
-
-  /* Collapse any non-report top-level containers to prevent blank page generation */
-  body:has(#single-page-report) > *:not(:has(#single-page-report)) {
-    display: none !important;
-  }
-
-  /* Suppress overlays, backdrops, close buttons, action bars, and non-print tools */
-  [data-radix-dialog-overlay],
-  [data-radix-portal] > [data-state]:not([role="dialog"]),
-  .fixed.inset-0,
+  /* 2. Suppress Non-Print UI Elements */
+  .no-print,
   button,
-  .no-print {
+  [data-radix-dialog-overlay] {
     display: none !important;
   }
 
-  /* 3. Clean up Radix Portal & Dialog Wrappers */
-  [data-radix-portal] {
-    display: block !important;
-    position: static !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
+  /* 3. DEDICATED SCORECARD PRINT PORTAL ISOLATION
+     When the print portal is active, isolate ONLY #innovedge-print-portal.
+     All other root body children (the main application, portal dialog overlays, wrappers) are completely removed from print flow.
+  */
+  body.printing-scorecard > *:not(#innovedge-print-portal),
+  body:has(#innovedge-print-portal:not([data-hidden="true"])) > *:not(#innovedge-print-portal) {
+    display: none !important;
   }
 
-  [role="dialog"],
-  div[data-state="open"][role="dialog"],
-  [data-radix-portal] [role="dialog"] {
-    position: static !important;
-    display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    height: auto !important;
-    max-height: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    overflow: visible !important;
-
-    /* CRITICAL FIX: Reset BOTH modern CSS translate AND transform to eliminate horizontal offset */
-    translate: none !important;
-    translate: 0 0 !important;
-    transform: none !important;
-    --tw-translate-x: 0 !important;
-    --tw-translate-y: 0 !important;
-    left: auto !important;
-    top: auto !important;
-    right: auto !important;
-    bottom: auto !important;
-    inset: auto !important;
-  }
-
-  /* Neutralize inner scrollable dialog wrappers */
-  [role="dialog"] > div,
-  [role="dialog"] .overflow-y-auto {
-    position: static !important;
-    display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    max-height: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    background: transparent !important;
-  }
-
-  /* 4. Target #single-page-report with Exact Centered Printable Dimensions */
-  #single-page-report {
+  body.printing-scorecard #innovedge-print-portal,
+  body:has(#innovedge-print-portal:not([data-hidden="true"])) #innovedge-print-portal {
     display: block !important;
     visibility: visible !important;
-    position: relative !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 194mm !important; /* Standard printable width on A4 (210mm - 2*8mm margin) */
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    overflow: visible !important;
+    translate: none !important;
+    transform: none !important;
+  }
+
+  #innovedge-print-portal,
+  #innovedge-print-portal * {
+    visibility: visible !important;
+  }
+
+  /* Compact 1-Page Calibrated Print Spacing */
+  #innovedge-print-portal .scorecard-sheet {
     box-sizing: border-box !important;
     width: 100% !important;
-    max-width: 194mm !important; /* Matches standard A4 printable width (210mm - 2*8mm) */
+    max-width: 194mm !important;
     margin: 0 auto !important;
-    padding: 3.5mm 5mm !important;
+    padding: 3mm 4mm !important;
     background: #ffffff !important;
     color: #0f172a !important;
     border: 1px solid #cbd5e1 !important;
@@ -366,157 +463,161 @@
     box-shadow: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    translate: none !important;
-    translate: 0 0 !important;
-    transform: none !important;
-    left: auto !important;
-    top: auto !important;
   }
 
-  /* Compact Spacing Between Report Sections (Fits 1 Sheet of A4) */
-  #single-page-report > * + * {
-    margin-top: 2.2mm !important;
+  #innovedge-print-portal .scorecard-sheet > * + * {
+    margin-top: 2mm !important;
   }
 
   /* Header Section */
-  #single-page-report .report-header {
-    padding-bottom: 2mm !important;
+  #innovedge-print-portal .scorecard-header {
+    padding-bottom: 1.8mm !important;
     margin-bottom: 1.5mm !important;
     border-bottom: 1.5px solid #0f172a !important;
     gap: 2mm !important;
   }
 
-  #single-page-report .report-header h1 {
+  #innovedge-print-portal .scorecard-header h1 {
     font-size: 13pt !important;
     line-height: 1.15 !important;
     letter-spacing: -0.01em !important;
     color: #0f172a !important;
   }
 
-  #single-page-report .report-header img {
-    width: 32px !important;
-    height: 32px !important;
+  #innovedge-print-portal .scorecard-header img {
+    width: 30px !important;
+    height: 30px !important;
   }
 
-  /* Team & Problem Statement Identification Box */
-  #single-page-report .grid-cols-1.md\:grid-cols-3 {
+  /* Identification Grid */
+  #innovedge-print-portal .id-grid {
     display: grid !important;
     grid-template-columns: 1fr 2fr !important;
     gap: 2mm !important;
-  }
-
-  #single-page-report .rounded-xl {
-    padding: 2.5mm 3.5mm !important;
+    padding: 2.2mm 3mm !important;
     border-radius: 4px !important;
     border: 1px solid #e2e8f0 !important;
+    background-color: #f8fafc !important;
   }
 
   /* Component Rubric Breakdown Table */
-  #single-page-report table {
+  #innovedge-print-portal table {
     width: 100% !important;
     font-size: 8pt !important;
     border-collapse: collapse !important;
   }
 
-  #single-page-report table th,
-  #single-page-report table td {
-    padding: 1.5mm 2.5mm !important;
-    line-height: 1.25 !important;
+  #innovedge-print-portal table th,
+  #innovedge-print-portal table td {
+    padding: 1.2mm 2.2mm !important;
+    line-height: 1.2 !important;
   }
 
-  #single-page-report table th {
+  #innovedge-print-portal table th {
     font-size: 7.5pt !important;
   }
 
-  /* 2-Column Banner: Aggregate Score & Qualification Decision */
-  #single-page-report .grid-cols-1.md\:grid-cols-2 {
+  /* 2-Column Banner: Aggregate Score & Qualification Status */
+  #innovedge-print-portal .results-banner {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 2.5mm !important;
+    gap: 2.2mm !important;
   }
 
-  #single-page-report .text-4xl {
-    font-size: 22pt !important;
+  #innovedge-print-portal .results-banner .score-value {
+    font-size: 20pt !important;
     line-height: 1 !important;
   }
 
-  #single-page-report .text-2xl {
-    font-size: 12pt !important;
+  #innovedge-print-portal .results-banner .status-value {
+    font-size: 11pt !important;
     line-height: 1.1 !important;
   }
 
-  /* Plagiarism Verification Card */
-  #single-page-report p {
-    font-size: 7.5pt !important;
-    line-height: 1.3 !important;
-    margin-top: 1mm !important;
+  /* Originality & Plagiarism Verification Box */
+  #innovedge-print-portal .plagiarism-box {
+    padding: 2mm 3mm !important;
+    border-radius: 4px !important;
+    border: 1px solid #e2e8f0 !important;
+    background-color: #ffffff !important;
   }
 
-  /* 3-Card Intelligent Evaluation Insights */
-  #single-page-report .space-y-2\.5 > .grid-cols-1.md\:grid-cols-3 {
+  #innovedge-print-portal .plagiarism-box p {
+    font-size: 7.2pt !important;
+    line-height: 1.25 !important;
+    margin-top: 0.8mm !important;
+  }
+
+  /* 3-Card Intelligent Evaluation Insights Row */
+  #innovedge-print-portal .insights-grid {
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 2mm !important;
   }
 
-  #single-page-report ul {
-    gap: 1.2mm !important;
+  #innovedge-print-portal .insights-grid > div {
+    padding: 2mm 2.5mm !important;
+    border-radius: 4px !important;
   }
 
-  #single-page-report li {
-    font-size: 7.5pt !important;
+  #innovedge-print-portal .insights-grid ul {
+    gap: 1mm !important;
+  }
+
+  #innovedge-print-portal .insights-grid li {
+    font-size: 7.2pt !important;
     line-height: 1.2 !important;
   }
 
-  #single-page-report li p {
+  #innovedge-print-portal .insights-grid li p {
     font-size: 6.8pt !important;
-    line-height: 1.2 !important;
+    line-height: 1.15 !important;
   }
 
-  /* Verification Footer & Institutional Seal */
-  #single-page-report .report-footer {
-    padding-top: 2mm !important;
-    margin-top: 2.5mm !important;
+  /* Verification Footer */
+  #innovedge-print-portal .scorecard-footer {
+    padding-top: 1.8mm !important;
+    margin-top: 2mm !important;
     border-top: 1.5px solid #cbd5e1 !important;
     font-size: 7pt !important;
     gap: 2mm !important;
   }
 
-  #single-page-report .report-footer img {
-    width: 26px !important;
-    height: 26px !important;
+  #innovedge-print-portal .scorecard-footer img {
+    width: 24px !important;
+    height: 24px !important;
   }
 
-  /* Strict Light-Theme Color Normalization for Print / PDF */
-  #single-page-report .bg-card,
-  #single-page-report .bg-background {
+  /* Strict Print Color Invariance */
+  #innovedge-print-portal .bg-card,
+  #innovedge-print-portal .bg-background {
     background-color: #ffffff !important;
     color: #0f172a !important;
   }
 
-  #single-page-report .bg-muted\/30,
-  #single-page-report .bg-muted\/40,
-  #single-page-report .bg-muted\/80 {
+  #innovedge-print-portal .bg-muted\/30,
+  #innovedge-print-portal .bg-muted\/40,
+  #innovedge-print-portal .bg-muted\/80 {
     background-color: #f8fafc !important;
   }
 
-  #single-page-report .bg-primary\/5,
-  #single-page-report .bg-primary\/10 {
+  #innovedge-print-portal .bg-primary\/5,
+  #innovedge-print-portal .bg-primary\/10 {
     background-color: #f1f5f9 !important;
   }
 
-  #single-page-report .text-foreground {
+  #innovedge-print-portal .text-foreground {
     color: #0f172a !important;
   }
 
-  #single-page-report .text-muted-foreground {
+  #innovedge-print-portal .text-muted-foreground {
     color: #475569 !important;
   }
 
-  #single-page-report .border-border,
-  #single-page-report .border-border\/80,
-  #single-page-report .border-border\/60,
-  #single-page-report .border-border\/50 {
+  #innovedge-print-portal .border-border,
+  #innovedge-print-portal .border-border\/80,
+  #innovedge-print-portal .border-border\/60,
+  #innovedge-print-portal .border-border\/50 {
     border-color: #cbd5e1 !important;
   }
 }

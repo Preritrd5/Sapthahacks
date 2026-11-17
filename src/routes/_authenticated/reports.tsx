@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   FileSpreadsheet,
   FileJson,
@@ -14,12 +15,19 @@ import {
   Sliders,
   ShieldCheck,
   AlertTriangle,
+  Users,
+  Target,
+  Sparkles,
+  BarChart3,
 } from "lucide-react";
 import { PageHeader, fmt, StatusBadge } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { TableSkeleton } from "@/components/ui/skeleton";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
 import { exportRows, downloadBlob } from "@/lib/export";
 import { COMPONENTS, COMPONENT_LABEL } from "@/lib/scoring";
@@ -187,22 +195,119 @@ function ReportsPage() {
     );
   };
 
+  // Summary Stats
+  const evaluatedCount = useMemo(() => {
+    return teams.filter((t) => t.officialFinal != null || t.aiFinal != null).length;
+  }, [teams]);
+
+  const avgScore = useMemo(() => {
+    const scored = teams.filter((t) => (t.officialFinal ?? t.aiFinal) != null);
+    if (!scored.length) return 0;
+    const total = scored.reduce((acc, t) => acc + (t.officialFinal ?? t.aiFinal ?? 0), 0);
+    return Math.round((total / scored.length) * 10) / 10;
+  }, [teams]);
+
+  const cleanIntegrityCount = useMemo(() => {
+    return teams.filter((t) => (plagiarismMap.get(t.id)?.overallSimilarity ?? 0) < 35).length;
+  }, [teams, plagiarismMap]);
+
   return (
     <>
-      <PageHeader
-        title="Reports & Qualification Center"
-        desc="Export official Qualified Teams lists and Complete Event Evaluation reports with full marks and plagiarism audit trails."
-      />
+      <FadeIn>
+        <PageHeader
+          title="Reports &amp; Qualification Center"
+          desc="Export official Qualified Teams lists and Complete Event Evaluation reports with full marks and plagiarism audit trails."
+        />
+      </FadeIn>
+
+      {/* Top 4 Interactive 3D Metric Showcase */}
+      <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <StaggerItem>
+          <GlassCard3D glowColor="amber" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Qualified Candidates
+              </span>
+              <div className="size-8 rounded-xl bg-amber-500/15 border border-amber-500/30 grid place-items-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
+                <Trophy className="size-4" />
+              </div>
+            </div>
+            <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
+              {qualifiedTeams.length}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Cutoff: <span className="font-semibold text-foreground">{cutoffScore}/100</span> marks
+            </div>
+          </GlassCard3D>
+        </StaggerItem>
+
+        <StaggerItem>
+          <GlassCard3D glowColor="terracotta" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Evaluated Teams
+              </span>
+              <div className="size-8 rounded-xl bg-primary/15 border border-primary/30 grid place-items-center text-primary shrink-0 group-hover:scale-110 transition-transform">
+                <Target className="size-4" />
+              </div>
+            </div>
+            <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
+              {evaluatedCount}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Across <span className="font-semibold text-foreground">{teams.length}</span> registered teams
+            </div>
+          </GlassCard3D>
+        </StaggerItem>
+
+        <StaggerItem>
+          <GlassCard3D glowColor="emerald" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Average Event Score
+              </span>
+              <div className="size-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 grid place-items-center text-emerald-500 shrink-0 group-hover:scale-110 transition-transform">
+                <BarChart3 className="size-4" />
+              </div>
+            </div>
+            <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
+              {avgScore} <span className="text-base text-muted-foreground font-normal">/ 100</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Mean aggregate performance
+            </div>
+          </GlassCard3D>
+        </StaggerItem>
+
+        <StaggerItem>
+          <GlassCard3D glowColor="sky" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Integrity Cleared
+              </span>
+              <div className="size-8 rounded-xl bg-sky-500/15 border border-sky-500/30 grid place-items-center text-sky-500 shrink-0 group-hover:scale-110 transition-transform">
+                <ShieldCheck className="size-4" />
+              </div>
+            </div>
+            <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
+              {cleanIntegrityCount}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Verified &lt; 35% similarity threshold
+            </div>
+          </GlassCard3D>
+        </StaggerItem>
+      </StaggerContainer>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2 mb-4">
-          <TabsTrigger value="qualified" className="text-xs font-semibold flex items-center gap-2">
+        <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 bg-muted/60 p-1 rounded-xl">
+          <TabsTrigger value="qualified" className="text-xs font-semibold flex items-center gap-2 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-xs transition-all">
             <Trophy className="size-4 text-amber-500" />
-            Qualified Teams Report ({qualifiedTeams.length})
+            Qualified Teams ({qualifiedTeams.length})
           </TabsTrigger>
-          <TabsTrigger value="complete" className="text-xs font-semibold flex items-center gap-2">
+          <TabsTrigger value="complete" className="text-xs font-semibold flex items-center gap-2 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-xs transition-all">
             <FileSpreadsheet className="size-4 text-primary" />
-            Complete Evaluation Report ({teams.length})
+            Complete Report ({teams.length})
           </TabsTrigger>
         </TabsList>
 
@@ -252,7 +357,10 @@ function ReportsPage() {
           </div>
 
           {/* Qualified Table */}
-          <div className="glass overflow-x-auto rounded-2xl border border-border/60">
+          {rows.isLoading ? (
+            <TableSkeleton rows={6} cols={7} />
+          ) : (
+            <div className="glass overflow-x-auto rounded-2xl border border-border/60">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground bg-muted/30">
                 <tr className="border-b border-border/80">
@@ -274,18 +382,18 @@ function ReportsPage() {
                   </tr>
                 ) : (
                   filteredQualified.map((t) => (
-                    <tr key={t.id} className="border-b border-border/40 hover:bg-muted/20">
+                    <tr key={t.id} className="border-b border-border/40 hover:bg-muted/35 transition-all duration-200 group">
                       <td className="p-3.5 pl-4 text-center">
-                        <span className={`inline-flex items-center justify-center size-7 rounded-full font-mono text-xs font-bold ${t.rank === 1 ? "bg-amber-500/20 text-amber-500 border border-amber-500/40" :
-                            t.rank === 2 ? "bg-slate-300/20 text-slate-300 border border-slate-400/40" :
-                              t.rank === 3 ? "bg-amber-700/20 text-amber-600 border border-amber-700/40" :
+                        <span className={`inline-flex items-center justify-center size-7 rounded-full font-mono text-xs font-bold transition-transform group-hover:scale-110 ${t.rank === 1 ? "bg-amber-500/20 text-amber-500 border border-amber-500/40 podium-gold shadow-xs" :
+                            t.rank === 2 ? "bg-slate-300/20 text-slate-300 border border-slate-400/40 podium-silver shadow-xs" :
+                              t.rank === 3 ? "bg-amber-700/20 text-amber-600 border border-amber-700/40 podium-bronze shadow-xs" :
                                 "bg-muted text-muted-foreground"
                           }`}>
                           #{t.rank}
                         </span>
                       </td>
                       <td className="p-3.5 font-bold text-foreground">
-                        <Link to="/teams/$id" params={{ id: t.id }} className="hover:text-primary">
+                        <Link to="/teams/$id" params={{ id: t.id }} className="hover:text-primary transition-colors">
                           {t.name}
                         </Link>
                       </td>
@@ -306,7 +414,7 @@ function ReportsPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => setSelectedReportTeam(t)}
-                          className="h-7 text-xs gap-1 border-primary/30 hover:bg-primary/10 hover:text-primary"
+                          className="h-7 text-xs gap-1 border-primary/30 hover:bg-primary/10 hover:text-primary shadow-xs transition-all hover:scale-105"
                         >
                           <FileText className="size-3 text-primary" />
                           <span>Scorecard</span>
@@ -318,6 +426,7 @@ function ReportsPage() {
               </tbody>
             </table>
           </div>
+          )}
         </TabsContent>
 
         {/* 2. COMPLETE EVALUATION REPORT TAB */}
@@ -349,7 +458,10 @@ function ReportsPage() {
           </div>
 
           {/* Master Complete Table */}
-          <div className="glass overflow-x-auto rounded-2xl border border-border/60">
+          {rows.isLoading ? (
+            <TableSkeleton rows={7} cols={9} />
+          ) : (
+            <div className="glass overflow-x-auto rounded-2xl border border-border/60">
             <table className="w-full text-xs">
               <thead className="text-left uppercase text-muted-foreground bg-muted/30">
                 <tr className="border-b border-border/80">
@@ -378,9 +490,9 @@ function ReportsPage() {
                     const isQualified = qualifiedTeams.some((q) => q.id === t.id);
 
                     return (
-                      <tr key={t.id} className="border-b border-border/40 hover:bg-muted/20">
+                      <tr key={t.id} className="border-b border-border/40 hover:bg-muted/35 transition-all duration-200 group">
                         <td className="p-3 pl-4">
-                          <Link to="/teams/$id" params={{ id: t.id }} className="font-bold text-foreground hover:text-primary">
+                          <Link to="/teams/$id" params={{ id: t.id }} className="font-bold text-foreground hover:text-primary transition-colors">
                             {t.name}
                           </Link>
                           <div className="text-[10px] text-muted-foreground truncate">{t.project_title}</div>
@@ -440,7 +552,7 @@ function ReportsPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => setSelectedReportTeam(t)}
-                            className="h-6 px-2 text-[11px] gap-1 hover:bg-primary/10 hover:text-primary border border-border/50"
+                            className="h-6 px-2 text-[11px] gap-1 hover:bg-primary/10 hover:text-primary border border-border/50 shadow-xs transition-all hover:scale-105"
                           >
                             <FileText className="size-3 text-primary" />
                             <span>Report</span>
@@ -453,6 +565,7 @@ function ReportsPage() {
               </tbody>
             </table>
           </div>
+          )}
         </TabsContent>
       </Tabs>
 

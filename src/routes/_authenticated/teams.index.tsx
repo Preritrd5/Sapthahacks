@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, StatusBadge, Empty, fmt } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
@@ -124,7 +125,7 @@ function Teams() {
       </div>
 
       {rows.isLoading ? (
-        <div className="glass h-64 animate-pulse rounded-2xl" />
+        <TableSkeleton rows={7} cols={6} />
       ) : !list.length ? (
         <Empty title="No teams found" desc="Add teams manually or import a CSV/XLSX file.">
           <Button asChild>
@@ -158,7 +159,7 @@ function Teams() {
                 const isCompleted = t.overall === "completed" || t.overall === "approved";
 
                 return (
-                  <tr key={t.id} className="border-b border-border/50 hover:bg-accent/30">
+                  <tr key={t.id} className="border-b border-border/50 hover:bg-muted/35 hover:shadow-xs transition-all duration-200 group">
                     <td className="p-3">
                       <Checkbox
                         checked={sel.has(t.id)}
@@ -170,7 +171,7 @@ function Teams() {
                       />
                     </td>
                     <td className="p-3">
-                      <Link to="/teams/$id" params={{ id: t.id }} className="font-bold hover:text-primary">
+                      <Link to="/teams/$id" params={{ id: t.id }} className="font-bold hover:text-primary transition-colors">
                         {t.name}
                       </Link>
                       <div className="text-xs text-muted-foreground">{t.email}</div>

@@ -2,7 +2,23 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Plus, Save, Trash2, FolderOpen, Sparkles, RotateCcw } from "lucide-react";
+import { motion } from "framer-motion";
+import {
+  ArrowDown,
+  ArrowUp,
+  Plus,
+  Save,
+  Trash2,
+  FolderOpen,
+  Sparkles,
+  RotateCcw,
+  FileText,
+  Github,
+  Globe,
+  Layers,
+  CheckCircle2,
+  Sliders,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, fmt } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -10,6 +26,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CardGridSkeleton } from "@/components/ui/skeleton";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
 import { COMPONENTS, COMPONENT_LABEL, type Component } from "@/lib/scoring";
 import { logActivity } from "@/lib/db";
 import type { Tables } from "@/integrations/supabase/types";
@@ -461,24 +480,137 @@ function Criteria() {
     refresh();
   };
 
+  const componentWeights = { pdf: 30, github: 40, website: 30 };
+  const componentIcons = { pdf: FileText, github: Github, website: Globe };
+  const componentGlows: Record<Component, "rose" | "sky" | "emerald"> = {
+    pdf: "rose",
+    github: "sky",
+    website: "emerald",
+  };
+
   return (
     <>
-      <PageHeader title="Evaluation criteria" desc="Each component is managed independently. The AI follows only these criteria, descriptions, and instructions.">
-        <Button variant="outline" onClick={populateAllComponentsDefaults} className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10 font-bold">
-          <Sparkles className="size-4" /> Fill All Default Descriptions
-        </Button>
-        <Button variant="secondary" onClick={saveTemplate}><Save className="size-4" />Save as template</Button>
-        <Button onClick={add}><Plus className="size-4" />Add criterion</Button>
-      </PageHeader>
-      <Tabs value={c} onValueChange={(v) => navigate({ to: "/criteria", search: { c: v as Component } })}>
-        <TabsList>{COMPONENTS.map((k) => <TabsTrigger key={k} value={k}>{COMPONENT_LABEL[k]}</TabsTrigger>)}</TabsList>
-      </Tabs>
-      <div className="mt-4 flex items-center gap-3 text-sm text-muted-foreground">
-        Total enabled marks: <span className="font-mono text-lg text-foreground">{fmt(total)}</span>
-        {total !== 100 && <span className="text-warning">(not 100 — scores are converted to a percentage)</span>}
+      <FadeIn>
+        <PageHeader
+          title="Evaluation Criteria Rubric"
+          desc="Configure multi-modal grading rubrics, scoring bounds, and explicit evaluation guidance for the AI engine."
+        >
+          <Button
+            variant="outline"
+            onClick={populateAllComponentsDefaults}
+            className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10 font-bold transition-all hover:scale-105"
+          >
+            <Sparkles className="size-4" /> Fill All Default Descriptions
+          </Button>
+          <Button variant="secondary" onClick={saveTemplate} className="transition-all hover:scale-105">
+            <Save className="size-4 mr-1.5" /> Save as Template
+          </Button>
+          <Button onClick={add} className="transition-all hover:scale-105 shadow-xs">
+            <Plus className="size-4 mr-1.5" /> Add Criterion
+          </Button>
+        </PageHeader>
+      </FadeIn>
+
+      {/* 3D Component Weight Cards Switcher */}
+      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+        {COMPONENTS.map((k) => {
+          const Icon = componentIcons[k];
+          const isSelected = c === k;
+          return (
+            <div
+              key={k}
+              onClick={() => navigate({ to: "/criteria", search: { c: k } })}
+              className="cursor-pointer"
+            >
+              <GlassCard3D
+                glowColor={componentGlows[k]}
+                className={`transition-all duration-300 relative overflow-hidden ${
+                  isSelected
+                    ? "ring-2 ring-primary/80 shadow-md bg-card/90"
+                    : "opacity-75 hover:opacity-100"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`size-9 rounded-xl grid place-items-center ${
+                        k === "pdf"
+                          ? "bg-rose-500/15 text-rose-500 border border-rose-500/30"
+                          : k === "github"
+                          ? "bg-sky-500/15 text-sky-500 border border-sky-500/30"
+                          : "bg-emerald-500/15 text-emerald-500 border border-emerald-500/30"
+                      }`}
+                    >
+                      <Icon className="size-4.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-display font-bold text-sm text-foreground">
+                        {COMPONENT_LABEL[k]}
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground font-mono">
+                        Official Weight: {componentWeights[k]}%
+                      </p>
+                    </div>
+                  </div>
+
+                  {isSelected && (
+                    <span className="size-2.5 rounded-full bg-primary animate-pulse" />
+                  )}
+                </div>
+
+                <div className="mt-3 flex items-center justify-between text-xs pt-2.5 border-t border-border/40 font-mono">
+                  <span className="text-muted-foreground">Rubric Status:</span>
+                  <span className="font-bold text-foreground">
+                    {isSelected ? `${list.length} Criteria Active` : "Click to Inspect"}
+                  </span>
+                </div>
+              </GlassCard3D>
+            </div>
+          );
+        })}
       </div>
-      <div className="mt-4 space-y-3">
-        {list.map((x, i) => <CritRow key={x.id + x.updated_at} x={x} first={i === 0} last={i === list.length - 1} onMove={(d) => move(i, d)} onSave={(p) => update(x.id, p)} onDelete={() => remove(x)} />)}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 bg-muted/40 p-3 rounded-xl border border-border/60">
+        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <span>Active Component:</span>
+          <span className="font-bold text-foreground font-mono text-sm capitalize">
+            {COMPONENT_LABEL[c]} ({componentWeights[c]}% Event Weight)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Total Enabled Marks:</span>
+          <span className="font-mono text-base font-black text-foreground">{fmt(total)}</span>
+          {total !== 100 && (
+            <span className="text-warning text-xs font-semibold">
+              (Auto-normalized to 100% scale)
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {crits.isLoading ? (
+          <CardGridSkeleton count={4} className="grid-cols-1" />
+        ) : (
+          list.map((x, i) => (
+            <motion.div
+              key={x.id + x.updated_at}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: i * 0.03 }}
+            >
+              <CritRow
+                x={x}
+                first={i === 0}
+                last={i === list.length - 1}
+                onMove={(d) => move(i, d)}
+                onSave={(p) => update(x.id, p)}
+                onDelete={() => remove(x)}
+              />
+            </motion.div>
+          ))
+        )}
       </div>
       {!!templates.data?.length && (
         <div className="glass mt-6 rounded-2xl p-5">
@@ -508,7 +640,7 @@ function CritRow({ x, first, last, onMove, onSave, onDelete }: { x: Crit; first:
     toast.success("Criterion saved — affected evaluations flagged for re-evaluation");
   };
   return (
-    <div className={`glass rounded-2xl p-4 ${x.enabled ? "" : "opacity-60"}`}>
+    <div className={`glass rounded-2xl p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-xs ${x.enabled ? "" : "opacity-60"}`}>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-col"><Button size="icon" variant="ghost" className="size-6" disabled={first} onClick={() => onMove(-1)}><ArrowUp className="size-3" /></Button><Button size="icon" variant="ghost" className="size-6" disabled={last} onClick={() => onMove(1)}><ArrowDown className="size-3" /></Button></div>
         <Input className="min-w-48 flex-1 font-medium" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />

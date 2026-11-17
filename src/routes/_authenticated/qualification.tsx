@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
 import { updatePersistentTeam } from "@/lib/team-store";
 import { COMPONENTS, COMPONENT_LABEL } from "@/lib/scoring";
@@ -34,6 +35,7 @@ import { TeamReportCard } from "@/components/team-report-card";
 import { DeleteTeamModal } from "@/components/delete-team-modal";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
 
 export const Route = createFileRoute("/_authenticated/qualification")({
   head: () => ({
@@ -252,54 +254,74 @@ function QualificationPage() {
         </PageHeader>
       </FadeIn>
 
-      {/* Stats Cards Banner */}
+      {/* Stats Cards Banner with 3D Tilt & Specular Sheen */}
       <StaggerContainer className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StaggerItem className="glass-interactive rounded-2xl p-4 flex items-center gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary font-bold">
-            <AnimatedNumber value={totalCount} precision={0} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-xs text-muted-foreground font-medium uppercase truncate">Total Teams</div>
-            <div className="text-base sm:text-lg font-bold text-foreground truncate">
-              <AnimatedNumber value={totalCount} precision={0} /> Registered
+        <StaggerItem>
+          <GlassCard3D
+            glowColor="rgba(217, 90, 43, 0.2)"
+            className="p-4 flex items-center gap-3 border-border/80 group"
+          >
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary font-bold transition-transform duration-300 group-hover:scale-115">
+              <AnimatedNumber value={totalCount} precision={0} />
             </div>
-          </div>
+            <div className="min-w-0">
+              <div className="text-xs text-muted-foreground font-medium uppercase truncate">Total Teams</div>
+              <div className="text-base sm:text-lg font-bold text-foreground truncate">
+                <AnimatedNumber value={totalCount} precision={0} /> Registered
+              </div>
+            </div>
+          </GlassCard3D>
         </StaggerItem>
 
-        <StaggerItem className="glass-interactive rounded-2xl p-4 flex items-center gap-3 border-emerald-500/20 bg-emerald-500/[0.03]">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 font-bold">
-            <CheckCircle2 className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-xs text-muted-foreground font-medium uppercase truncate">Qualified</div>
-            <div className="text-base sm:text-lg font-bold text-emerald-600 truncate">
-              <AnimatedNumber value={qualifiedCount} precision={0} /> Shortlisted
+        <StaggerItem>
+          <GlassCard3D
+            glowColor="rgba(16, 185, 129, 0.25)"
+            className="p-4 flex items-center gap-3 border-emerald-500/25 bg-emerald-500/[0.03] group"
+          >
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 font-bold transition-transform duration-300 group-hover:scale-115">
+              <CheckCircle2 className="size-5" />
             </div>
-          </div>
+            <div className="min-w-0">
+              <div className="text-xs text-muted-foreground font-medium uppercase truncate">Qualified</div>
+              <div className="text-base sm:text-lg font-bold text-emerald-600 truncate">
+                <AnimatedNumber value={qualifiedCount} precision={0} /> Shortlisted
+              </div>
+            </div>
+          </GlassCard3D>
         </StaggerItem>
 
-        <StaggerItem className="glass-interactive rounded-2xl p-4 flex items-center gap-3 border-amber-500/20 bg-amber-500/[0.03]">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600 font-bold">
-            <AnimatedNumber value={totalCount - qualifiedCount} precision={0} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-xs text-muted-foreground font-medium uppercase truncate">Pending Review</div>
-            <div className="text-base sm:text-lg font-bold text-foreground truncate">
-              <AnimatedNumber value={totalCount - qualifiedCount} precision={0} /> Teams
+        <StaggerItem>
+          <GlassCard3D
+            glowColor="rgba(245, 158, 11, 0.25)"
+            className="p-4 flex items-center gap-3 border-amber-500/25 bg-amber-500/[0.03] group"
+          >
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600 font-bold transition-transform duration-300 group-hover:scale-115">
+              <AnimatedNumber value={totalCount - qualifiedCount} precision={0} />
             </div>
-          </div>
+            <div className="min-w-0">
+              <div className="text-xs text-muted-foreground font-medium uppercase truncate">Pending Review</div>
+              <div className="text-base sm:text-lg font-bold text-foreground truncate">
+                <AnimatedNumber value={totalCount - qualifiedCount} precision={0} /> Teams
+              </div>
+            </div>
+          </GlassCard3D>
         </StaggerItem>
 
-        <StaggerItem className="glass-interactive rounded-2xl p-4 flex items-center gap-3 border-rose-500/20 bg-rose-500/[0.03]">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-600 font-bold">
-            <AlertTriangle className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-xs text-muted-foreground font-medium uppercase truncate">Plagiarism Flagged</div>
-            <div className="text-base sm:text-lg font-bold text-rose-600 truncate">
-              <AnimatedNumber value={flaggedCount} precision={0} /> Teams
+        <StaggerItem>
+          <GlassCard3D
+            glowColor="rgba(244, 63, 94, 0.25)"
+            className="p-4 flex items-center gap-3 border-rose-500/25 bg-rose-500/[0.03] group"
+          >
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-600 font-bold transition-transform duration-300 group-hover:scale-115">
+              <AlertTriangle className="size-5 text-rose-500" />
             </div>
-          </div>
+            <div className="min-w-0">
+              <div className="text-xs text-muted-foreground font-medium uppercase truncate">Plagiarism Flagged</div>
+              <div className="text-base sm:text-lg font-bold text-rose-600 truncate">
+                <AnimatedNumber value={flaggedCount} precision={0} /> Teams
+              </div>
+            </div>
+          </GlassCard3D>
         </StaggerItem>
       </StaggerContainer>
 
@@ -357,7 +379,7 @@ function QualificationPage() {
 
       {/* Main Teams Qualification Table */}
       {rows.isLoading ? (
-        <div className="glass h-72 animate-pulse rounded-2xl" />
+        <TableSkeleton rows={7} cols={8} />
       ) : filteredTeams.length === 0 ? (
         <div className="glass rounded-2xl p-12 text-center">
           <div className="text-lg font-semibold text-foreground">No matching teams found</div>

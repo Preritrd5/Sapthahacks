@@ -134,7 +134,14 @@ function Import() {
         <>
           <div className="mb-3 flex items-center justify-between text-sm">
             <span>{rows.length} rows · <span className="text-success">{valid} will be imported</span> · <span className="text-warning">{rows.filter((r) => r.duplicate).length} duplicates skipped</span></span>
-            <Button onClick={save} disabled={busy || !valid}>{busy && <Loader2 className="size-4 animate-spin" />}Import {valid} teams</Button>
+            <Button
+              onClick={save}
+              loading={busy}
+              loadingText={`Importing ${valid} teams...`}
+              disabled={!valid}
+            >
+              Import {valid} teams
+            </Button>
           </div>
           <div className="glass overflow-x-auto rounded-2xl">
             <table className="w-full text-sm">

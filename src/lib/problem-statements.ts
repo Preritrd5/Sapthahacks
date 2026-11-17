@@ -51,21 +51,39 @@ export const DEFAULT_PROBLEM_STATEMENTS: Omit<ProblemStatement, "id">[] = [
   },
   {
     code: "PS-05",
-    title: "Real-Time Micro-Lending Risk & Fraud Prevention API",
-    category: "FinTech & Banking",
+    title: "Messy Data Repair Engine",
+    category: "Data Engineering & AI Systems",
     description:
-      "Construct an automated credit scoring and transaction fraud detection pipeline for micro-enterprises lacking conventional credit history using alternative behavioral signals.",
+      "Build an automated, intelligent data cleaning, missing-value imputation, and deduplication engine that ingests corrupted, inconsistent, or partially missing multi-modal datasets and restores relational and statistical integrity with minimal human supervision.",
     requirements:
-      "Fairness-aware credit risk model, real-time transaction anomaly detection, and interactive admin risk scoring panel.",
+      "Automated schema reconciliation, robust statistical & ML-driven missing value imputation, entity resolution/deduplication, anomaly detection, and interactive before/after data validation reports.",
   },
   {
     code: "PS-06",
-    title: "Personalized Accessible Learning Engine for Students",
-    category: "EdTech & Accessibility",
+    title: "Automatic Software Bug Repair System",
+    category: "Developer Tools & AI Agents",
     description:
-      "Develop an adaptive learning platform tailored for students with neurodivergent needs, featuring dynamic multimodal content, interactive scaffolding, and pacing adjustments.",
+      "Develop an autonomous program analysis and neural patch synthesis system that ingests failing test suites or stack traces, pinpoints root-cause faults in source code, and produces syntactically and semantically correct bug patches.",
     requirements:
-      "WCAG 2.2 AA accessibility conformance, adaptive content presentation engine, and student progress analytics.",
+      "Static AST and dynamic trace analysis, automated fault localization (FL), constraint-guided LLM patch generation, regression test verification, and automated PR generation with patch explanations.",
+  },
+  {
+    code: "PS-07",
+    title: "Research Claim and Citation Checker",
+    category: "Academic Integrity & NLP",
+    description:
+      "Construct an evidence-grounded research validation tool that inspects scientific papers and preprints, cross-references factual assertions against published literature corpora, and flags fabricated citations, retracted paper references, or unsubstantiated claims.",
+    requirements:
+      "Cross-document citation graph indexing, automated claim extraction, semantic citation context alignment, retracted paper database verification, and confidence-scored claim support/refutation reports.",
+  },
+  {
+    code: "PS-08",
+    title: "Fake News and Deepfake Detection System",
+    category: "Cybersecurity & Media Forensics",
+    description:
+      "Create a multimodal truth verification and forensics engine capable of detecting synthetic video manipulation (face swaps, lip-sync tampering), generated voice clones, and viral disinformation narratives across digital media channels.",
+    requirements:
+      "Spatial-temporal video anomaly detection, acoustic frequency artifacts analysis for voice clones, narrative provenance cross-checking, and explainable forensic heatmaps for moderator review.",
   },
 ];
 
@@ -110,8 +128,21 @@ export async function fetchProblemStatements(): Promise<ProblemStatement[]> {
           updated_at: c.updated_at || row.created_at,
         };
       });
-      saveLocal(parsed);
-      return parsed;
+      // Check if any default challenge is missing, merge it in
+      const missingDefaults = DEFAULT_PROBLEM_STATEMENTS.filter(
+        (d) =>
+          !parsed.some(
+            (p) =>
+              p.code.toLowerCase() === d.code.toLowerCase() ||
+              p.title.toLowerCase() === d.title.toLowerCase()
+          )
+      );
+      const combined = [
+        ...parsed,
+        ...missingDefaults.map((m, idx) => ({ ...m, id: `default-${parsed.length + idx + 1}` })),
+      ];
+      saveLocal(combined);
+      return combined;
     }
   } catch (err) {
     console.warn("Failed to fetch problem statements from database, checking local cache:", err);
@@ -119,13 +150,33 @@ export async function fetchProblemStatements(): Promise<ProblemStatement[]> {
 
   // Fallback to local storage or defaults
   const cached = loadLocal();
-  if (cached.length > 0) return cached;
+  if (cached.length > 0) {
+    const missing = DEFAULT_PROBLEM_STATEMENTS.filter(
+      (d) =>
+        !cached.some(
+          (c) =>
+            c.code.toLowerCase() === d.code.toLowerCase() ||
+            c.title.toLowerCase() === d.title.toLowerCase()
+        )
+    );
+    if (missing.length > 0) {
+      const merged = [
+        ...cached,
+        ...missing.map((m, idx) => ({ ...m, id: `default-${cached.length + idx + 1}` })),
+      ];
+      saveLocal(merged);
+      return merged;
+    }
+    return cached;
+  }
 
   // If completely empty, return defaults with generated IDs
-  return DEFAULT_PROBLEM_STATEMENTS.map((ps, i) => ({
+  const initial = DEFAULT_PROBLEM_STATEMENTS.map((ps, i) => ({
     ...ps,
     id: `default-${i + 1}`,
   }));
+  saveLocal(initial);
+  return initial;
 }
 
 export async function createProblemStatement(ps: Omit<ProblemStatement, "id">): Promise<ProblemStatement> {

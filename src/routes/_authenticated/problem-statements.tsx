@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CardGridSkeleton } from "@/components/ui/skeleton";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { useTeamRows } from "@/lib/queries";
 import {
   fetchProblemStatements,
@@ -227,11 +230,7 @@ function ProblemStatementsPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="glass h-48 animate-pulse rounded-2xl" />
-          ))}
-        </div>
+        <CardGridSkeleton count={6} />
       ) : filtered.length === 0 ? (
         <Empty
           title="No problem statements found"
@@ -247,83 +246,85 @@ function ProblemStatementsPage() {
           </Button>
         </Empty>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((ps) => {
             const count = teamCounts.get(ps.id) ?? 0;
             return (
-              <div
-                key={ps.id}
-                className="glass-interactive relative flex flex-col justify-between rounded-2xl p-5 hover:border-primary/60 hover:shadow-[0_14px_36px_rgba(217,90,43,0.14)]"
-              >
-                <div>
-                  {/* Badges & Category Header */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center rounded-lg bg-primary/10 px-2.5 py-1 font-mono text-xs font-semibold text-primary">
-                      {ps.code}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      <Tag className="size-3" />
-                      {ps.category || "General"}
-                    </span>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="mt-3 font-semibold text-foreground line-clamp-2 leading-snug">
-                    {ps.title}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="mt-2 text-xs text-muted-foreground line-clamp-4 leading-relaxed whitespace-pre-wrap">
-                    {ps.description}
-                  </p>
-
-                  {/* Requirements / constraints if any */}
-                  {ps.requirements && (
-                    <div className="mt-3 rounded-lg bg-accent/40 p-2.5 text-[11px] text-muted-foreground">
-                      <span className="font-semibold text-foreground">Scope / Key requirements: </span>
-                      {ps.requirements}
+              <StaggerItem key={ps.id}>
+                <GlassCard3D
+                  glowColor="rgba(217, 90, 43, 0.18)"
+                  className="p-5 flex flex-col justify-between h-full border-border/80 group"
+                >
+                  <div>
+                    {/* Badges & Category Header */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center rounded-lg bg-primary/10 px-2.5 py-1 font-mono text-xs font-bold text-primary border border-primary/25">
+                        {ps.code}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-muted/80 px-2 py-0.5 text-xs text-muted-foreground border border-border/50">
+                        <Tag className="size-3" />
+                        {ps.category || "General"}
+                      </span>
                     </div>
-                  )}
-                </div>
 
-                {/* Footer with Teams Count and Actions (Edit & Delete) */}
-                <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Users className="size-3.5" />
-                    <span>
-                      {count === 1 ? "1 team enrolled" : `${count} teams enrolled`}
-                    </span>
+                    {/* Title */}
+                    <h3 className="mt-3 font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                      {ps.title}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="mt-2 text-xs text-muted-foreground line-clamp-4 leading-relaxed whitespace-pre-wrap">
+                      {ps.description}
+                    </p>
+
+                    {/* Requirements / constraints if any */}
+                    {ps.requirements && (
+                      <div className="mt-3 rounded-lg bg-accent/40 p-2.5 text-[11px] text-muted-foreground border border-border/40">
+                        <span className="font-semibold text-foreground">Scope / Key requirements: </span>
+                        {ps.requirements}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    {/* Easy Edit Option */}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 gap-1.5 text-xs hover:text-primary hover:bg-primary/10"
-                      onClick={() => openEditDialog(ps)}
-                      title="Edit this problem statement"
-                    >
-                      <Pencil className="size-3.5" />
-                      Edit
-                    </Button>
+                  {/* Footer with Teams Count and Actions (Edit & Delete) */}
+                  <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Users className="size-3.5 text-primary" />
+                      <span className="font-medium">
+                        {count === 1 ? "1 team enrolled" : `${count} teams enrolled`}
+                      </span>
+                    </div>
 
-                    {/* Delete Option */}
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDelete(ps)}
-                      title="Delete problem statement"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {/* Easy Edit Option */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 gap-1.5 text-xs hover:text-primary hover:bg-primary/10 transition-colors"
+                        onClick={() => openEditDialog(ps)}
+                        title="Edit this problem statement"
+                      >
+                        <Pencil className="size-3.5" />
+                        Edit
+                      </Button>
+
+                      {/* Delete Option */}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        onClick={() => handleDelete(ps)}
+                        title="Delete problem statement"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </GlassCard3D>
+              </StaggerItem>
             );
           })}
-        </div>
+        </StaggerContainer>
       )}
 
       {/* Add / Edit Dialog */}

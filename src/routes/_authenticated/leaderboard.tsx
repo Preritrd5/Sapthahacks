@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Download, Trophy, Medal } from "lucide-react";
+import { Download, Trophy, Medal, Sparkles, Crown } from "lucide-react";
 import { PageHeader, StatusBadge, fmt } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { FadeIn } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
 import { rankWithTies } from "@/lib/scoring";
 import { exportRows } from "@/lib/export";
@@ -79,6 +81,10 @@ function Board() {
       Tied: x.tied ? "yes" : "",
     }));
 
+  const topThree = useMemo(() => {
+    return list.filter((x) => x.score > 0).slice(0, 3);
+  }, [list]);
+
   return (
     <>
       <FadeIn>
@@ -95,6 +101,101 @@ function Board() {
         </PageHeader>
       </FadeIn>
 
+      {/* Top 3 Official Podium Showcase */}
+      {!rows.isLoading && !q && topThree.length >= 2 && (
+        <FadeIn direction="up" delay={0.1} className="mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 items-end">
+            {/* 2nd Place (Silver) */}
+            {topThree[1] && (
+              <div className="order-2 md:order-1">
+                <GlassCard3D
+                  glowColor="rgba(148, 163, 184, 0.25)"
+                  className="p-4 rounded-2xl border-slate-400/30 bg-slate-500/5 text-center relative overflow-hidden group"
+                >
+                  <div className="size-9 mx-auto mb-2 rounded-full bg-slate-400/20 text-slate-300 grid place-items-center font-bold text-sm border border-slate-400/40">
+                    #2
+                  </div>
+                  <h3 className="font-display font-bold text-base truncate text-foreground">
+                    {topThree[1].t.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {topThree[1].t.project_title || "Innovation Proposal"}
+                  </p>
+                  <div className="mt-2 font-mono text-2xl font-black text-slate-300">
+                    <AnimatedNumber value={topThree[1].score} precision={1} />
+                    <span className="text-xs font-normal text-muted-foreground font-sans"> / 100</span>
+                  </div>
+                  <div className="mt-1">
+                    <StatusBadge status={topThree[1].official ? "approved" : "pending"} />
+                  </div>
+                </GlassCard3D>
+              </div>
+            )}
+
+            {/* 1st Place (Gold Champion) */}
+            {topThree[0] && (
+              <div className="order-1 md:order-2 md:-translate-y-2">
+                <GlassCard3D
+                  glowColor="rgba(245, 158, 11, 0.35)"
+                  intensity={15}
+                  className="p-5 rounded-2xl border-amber-500/50 bg-amber-500/10 text-center relative overflow-hidden shadow-lg shadow-amber-500/10 group"
+                >
+                  <div className="absolute top-2 right-2">
+                    <Sparkles className="size-4 text-amber-500 animate-pulse" />
+                  </div>
+                  <div className="size-11 mx-auto mb-2 rounded-full bg-amber-500/25 text-amber-500 grid place-items-center font-bold text-base border-2 border-amber-500/60 shadow-sm shadow-amber-500/20 animate-float">
+                    <Crown className="size-6 text-amber-400 fill-amber-400" />
+                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mb-0.5">
+                    Event Champion
+                  </div>
+                  <h3 className="font-display font-black text-lg truncate text-foreground">
+                    {topThree[0].t.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium">
+                    {topThree[0].t.project_title || "Grand Jury Winner"}
+                  </p>
+                  <div className="mt-2 font-mono text-3xl font-black text-amber-500">
+                    <AnimatedNumber value={topThree[0].score} precision={1} />
+                    <span className="text-xs font-normal text-muted-foreground font-sans"> / 100</span>
+                  </div>
+                  <div className="mt-1">
+                    <StatusBadge status={topThree[0].official ? "approved" : "pending"} />
+                  </div>
+                </GlassCard3D>
+              </div>
+            )}
+
+            {/* 3rd Place (Bronze) */}
+            {topThree[2] && (
+              <div className="order-3">
+                <GlassCard3D
+                  glowColor="rgba(217, 119, 6, 0.25)"
+                  className="p-4 rounded-2xl border-amber-700/30 bg-amber-700/5 text-center relative overflow-hidden group"
+                >
+                  <div className="size-9 mx-auto mb-2 rounded-full bg-amber-700/20 text-amber-600 dark:text-amber-400 grid place-items-center font-bold text-sm border border-amber-700/40">
+                    #3
+                  </div>
+                  <h3 className="font-display font-bold text-base truncate text-foreground">
+                    {topThree[2].t.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {topThree[2].t.project_title || "Innovation Proposal"}
+                  </p>
+                  <div className="mt-2 font-mono text-2xl font-black text-amber-600 dark:text-amber-400">
+                    <AnimatedNumber value={topThree[2].score} precision={1} />
+                    <span className="text-xs font-normal text-muted-foreground font-sans"> / 100</span>
+                  </div>
+                  <div className="mt-1">
+                    <StatusBadge status={topThree[2].official ? "approved" : "pending"} />
+                  </div>
+                </GlassCard3D>
+              </div>
+            )}
+          </div>
+        </FadeIn>
+      )}
+
       <div className="mb-4 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4">
         <Input
           className="w-full sm:w-64 bg-background text-xs"
@@ -108,7 +209,10 @@ function Board() {
         </label>
       </div>
 
-      <div className="glass overflow-x-auto rounded-2xl border border-border/60">
+      {rows.isLoading ? (
+        <TableSkeleton rows={8} cols={8} />
+      ) : (
+        <div className="glass overflow-x-auto rounded-2xl border border-border/60">
         <table className="w-full text-sm">
           <thead className="text-left text-xs uppercase text-muted-foreground bg-muted/30">
             <tr className="border-b border-border/80">
@@ -134,20 +238,30 @@ function Board() {
               <tr
                 key={x.t.id}
                 className={cn(
-                  "border-b border-border/40 hover:bg-muted/20 transition-colors",
+                  "border-b border-border/40 hover:bg-muted/30 transition-all duration-200 group",
                   !x.official && "opacity-75"
                 )}
               >
                 <td className="p-3.5 pl-4 font-display font-semibold">
                   {x.rank != null ? (
-                    <span className={cn("inline-flex items-center gap-1", x.rank <= 3 && "text-primary font-bold")}>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 font-bold transition-transform duration-200 group-hover:scale-105",
+                        x.rank === 1 && "bg-amber-500/15 text-amber-500 border border-amber-500/40 px-2 py-0.5 rounded-full shadow-xs shadow-amber-500/10",
+                        x.rank === 2 && "bg-slate-400/15 text-slate-300 border border-slate-400/40 px-2 py-0.5 rounded-full",
+                        x.rank === 3 && "bg-amber-700/15 text-amber-600 dark:text-amber-400 border border-amber-700/40 px-2 py-0.5 rounded-full",
+                        x.rank > 3 && "text-muted-foreground px-2"
+                      )}
+                    >
                       {x.rank === 1 ? (
-                        <Trophy className="size-3.5 text-amber-500 fill-amber-500/20" />
-                      ) : x.rank <= 3 ? (
-                        <Medal className="size-3.5 text-primary" />
+                        <Crown className="size-3.5 text-amber-400 fill-amber-400 animate-pulse" />
+                      ) : x.rank === 2 ? (
+                        <Medal className="size-3.5 text-slate-300" />
+                      ) : x.rank === 3 ? (
+                        <Medal className="size-3.5 text-amber-600 dark:text-amber-400" />
                       ) : null}
                       #{x.rank}
-                      {x.tied && <span className="ml-1 rounded bg-warning/20 px-1 text-[10px] text-warning">TIE</span>}
+                      {x.tied && <span className="ml-1 rounded bg-warning/20 px-1 text-[10px] text-warning font-mono">TIE</span>}
                     </span>
                   ) : (
                     <span className="text-xs text-muted-foreground font-mono">pending</span>
@@ -189,6 +303,7 @@ function Board() {
           </tbody>
         </table>
       </div>
+      )}
     </>
   );
 }

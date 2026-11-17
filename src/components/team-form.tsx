@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FileText, Loader2, Plus, Trash2, Upload, Lightbulb, ExternalLink, Tag } from "lucide-react";
+import { FileText, Loader2, Plus, Trash2, Upload, Lightbulb, ExternalLink, Tag, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { checkPdf, submissionSchema } from "@/lib/submission";
 import { fetchProblemStatements, type ProblemStatement } from "@/lib/problem-statements";
 import { upsertPersistentTeam, savePersistentMembers } from "@/lib/team-store";
 import { evaluateSingleTeam } from "@/lib/evaluation-engine";
+import { cn } from "@/lib/utils";
 
 type Member = { name: string; email: string };
 
@@ -41,6 +42,7 @@ export function TeamForm({ team, members: initial }: { team?: Team; members?: Me
   const [members, setMembers] = useState<Member[]>(initial?.length ? initial : [{ name: "", email: "" }]);
   const [pdf, setPdf] = useState<File | null>(null);
   const [removePdf, setRemovePdf] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const maxMb = 3;
 
@@ -358,10 +360,49 @@ export function TeamForm({ team, members: initial }: { team?: Team; members?: Me
       <div className="space-y-4">
         <div className="glass rounded-2xl p-6">
           <Label>Project PDF * (max {maxMb} MB)</Label>
-          <label className="mt-3 flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground hover:border-primary">
-            <Upload className="size-6" />
-            {pdf ? pdf.name : team?.pdf_path && !removePdf ? "Replace current PDF" : "Choose a PDF"}
-            <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => pickPdf(e.target.files?.[0])} />
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              const dropped = e.dataTransfer.files?.[0];
+              if (dropped) pickPdf(dropped);
+            }}
+            className={cn(
+              "mt-3 flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed p-6 text-center text-sm transition-all",
+              isDragging
+                ? "border-primary bg-primary/10 text-primary shadow-sm"
+                : "border-border text-muted-foreground hover:border-primary/80 hover:bg-muted/10",
+              pdf && "border-emerald-500/50 bg-emerald-500/5 text-emerald-950 dark:text-emerald-200"
+            )}
+          >
+            {pdf ? (
+              <CheckCircle2 className="size-6 text-emerald-500 animate-in zoom-in-75 duration-200" />
+            ) : (
+              <Upload className="size-6" />
+            )}
+            <div className="font-semibold">
+              {pdf
+                ? pdf.name
+                : team?.pdf_path && !removePdf
+                ? "Replace current PDF"
+                : "Choose a PDF or drag & drop here"}
+            </div>
+            {pdf && (
+              <span className="text-[11px] font-mono text-muted-foreground">
+                {(pdf.size / 1024).toFixed(0)} KB · Ready for upload
+              </span>
+            )}
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden"
+              onChange={(e) => pickPdf(e.target.files?.[0])}
+            />
           </label>
           {team?.pdf_path && !pdf && !removePdf && (
             <div className="mt-3 flex items-center justify-between text-sm">
@@ -376,8 +417,11 @@ export function TeamForm({ team, members: initial }: { team?: Team; members?: Me
           )}
           {removePdf && <p className="mt-2 text-xs text-warning">PDF will be removed on save.</p>}
         </div>
-        <Button className="w-full" disabled={busy}>
-          {busy && <Loader2 className="size-4 animate-spin" />}
+        <Button
+          className="w-full"
+          loading={busy}
+          loadingText={team ? "Saving changes..." : "Creating team & extracting PDF..."}
+        >
           {team ? "Save changes" : "Create team"}
         </Button>
       </div>

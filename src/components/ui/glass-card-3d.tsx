@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface GlassCard3DProps {
@@ -18,9 +18,10 @@ export function GlassCard3D({
   className,
   containerClassName,
   glowColor = "rgba(217, 90, 43, 0.15)",
-  intensity = 15,
+  intensity = 12,
   onClick,
 }: GlassCard3DProps) {
+  const shouldReduceMotion = useReducedMotion();
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
@@ -29,7 +30,7 @@ export function GlassCard3D({
   const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
+    if (shouldReduceMotion || !cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -56,6 +57,14 @@ export function GlassCard3D({
     setIsHovered(true);
   };
 
+  if (shouldReduceMotion) {
+    return (
+      <div className={cn("glass rounded-2xl p-4 sm:p-5", className)} onClick={onClick}>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div style={{ perspective: 1000 }} className={cn("h-full", containerClassName)}>
       <motion.div
@@ -66,22 +75,22 @@ export function GlassCard3D({
         animate={{
           rotateX,
           rotateY,
-          scale: isHovered ? 1.025 : 1,
+          scale: isHovered ? 1.02 : 1,
         }}
         transition={{
           type: "spring",
-          stiffness: 280,
-          damping: 20,
+          stiffness: 300,
+          damping: 22,
         }}
         style={{
           transformStyle: "preserve-3d" as const,
         } as any}
         className={cn(
-          "relative overflow-hidden rounded-2xl border border-white/50 dark:border-white/10",
-          "bg-white/75 dark:bg-card/70 backdrop-blur-xl",
+          "relative overflow-hidden rounded-2xl border border-border/80",
+          "bg-card/85 backdrop-blur-xl p-4 sm:p-5",
           "shadow-[0_8px_32px_0_rgba(217,90,43,0.06)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]",
-          "transition-shadow duration-300",
-          isHovered && "shadow-[0_16px_40px_0_rgba(217,90,43,0.16)] dark:shadow-[0_16px_40px_0_rgba(217,90,43,0.22)]",
+          "transition-all duration-300",
+          isHovered && "shadow-[0_16px_40px_0_rgba(217,90,43,0.18)] border-primary/40",
           className
         )}
         onClick={onClick}
@@ -97,7 +106,7 @@ export function GlassCard3D({
         )}
 
         {/* 3D Content Container */}
-        <div style={{ transform: "translateZ(15px)" }} className="relative z-20 size-full">
+        <div style={{ transform: "translateZ(12px)" }} className="relative z-20 size-full">
           {children}
         </div>
       </motion.div>

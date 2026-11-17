@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { QueueRunnerProvider, useQueueRunner } from "@/lib/queue-runner";
 import { AnimatedBackground } from "@/components/animated-background";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { AppSplashLoader, InnovedgeLoader } from "@/components/ui/innovedge-loader";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 
@@ -102,9 +103,10 @@ function Layout() {
 
   if (authLoading || adminQuery.isLoading) {
     return (
-      <div className="grid min-h-screen place-items-center">
-        <Loader2 className="size-6 animate-spin text-primary" />
-      </div>
+      <AppSplashLoader
+        message="Verifying Administrator Authorization..."
+        submessage="Authenticating institutional credentials with Supabase PostgreSQL"
+      />
     );
   }
 
@@ -218,16 +220,35 @@ function Shell({ email, onSignOut }: { email: string; onSignOut: () => void }) {
                 to={n.to}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all select-none",
+                  "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors select-none group",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-xs font-semibold border-l-2 border-primary"
-                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                    ? "text-sidebar-accent-foreground font-semibold"
+                    : "text-sidebar-foreground/75 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/30"
                 )}
               >
-                <n.icon className={cn("size-4 shrink-0 transition-transform group-hover:scale-110", active ? "text-primary" : "text-muted-foreground")} />
-                <span className="truncate">{n.label}</span>
+                {active && (
+                  shouldReduceMotion ? (
+                    <div className="absolute inset-0 rounded-lg bg-sidebar-accent border-l-2 border-primary shadow-xs" />
+                  ) : (
+                    <motion.div
+                      layoutId="sidebar-active-indicator"
+                      className="absolute inset-0 rounded-lg bg-sidebar-accent border-l-2 border-primary shadow-xs"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )
+                )}
+                <n.icon
+                  className={cn(
+                    "relative z-10 size-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
+                    active ? "text-primary scale-105" : "text-muted-foreground group-hover:text-foreground"
+                  )}
+                />
+                <span className="relative z-10 truncate">{n.label}</span>
                 {n.to === "/queue" && q.running && (
-                  <span className="ml-auto size-2 shrink-0 animate-pulse rounded-full bg-success" />
+                  <span className="relative z-10 ml-auto flex items-center gap-1">
+                    <span className="size-2 shrink-0 animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                  </span>
                 )}
               </Link>
             );

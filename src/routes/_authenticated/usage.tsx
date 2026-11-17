@@ -19,6 +19,9 @@ import { PageHeader, StatusBadge } from "@/components/page-header";
 import { useSettings } from "@/lib/queries";
 import { getStoredApiLogs, calculateTokenCost, type ApiUsageLog } from "@/lib/usage-logger";
 import { useAuth } from "@/lib/auth-context";
+import { StatCardSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/skeleton";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -214,68 +217,100 @@ function UsagePage() {
 
   return (
     <>
-      <PageHeader
-        title="API Usage Analytics"
-        desc={`Live metrics calculated directly from ${totalRequests} recorded API evaluation calls.`}
-      />
+      <FadeIn>
+        <PageHeader
+          title="API Usage Analytics"
+          desc={`Live metrics calculated directly from ${totalRequests} recorded API evaluation calls.`}
+        />
+      </FadeIn>
 
-      {/* Top Metric Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
-        <div className="glass rounded-2xl p-4">
-          <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
-            <span>Total API Requests</span>
-            <Gauge className="size-4 text-primary" />
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold">{totalRequests.toLocaleString()}</div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">Recorded AI calls</div>
+      {/* Top 5 Interactive 3D Metric Cards */}
+      {usageQuery.isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
         </div>
+      ) : (
+        <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
+          <StaggerItem>
+            <GlassCard3D glowColor="primary" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between gap-2">
+                <span>Total Requests</span>
+                <div className="size-7 rounded-lg bg-primary/15 border border-primary/30 grid place-items-center text-primary shrink-0 group-hover:scale-110 transition-transform">
+                  <Gauge className="size-3.5" />
+                </div>
+              </div>
+              <div className="my-2 font-mono text-2xl font-bold">{totalRequests.toLocaleString()}</div>
+              <div className="text-[11px] text-muted-foreground">Recorded AI calls</div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <div className="glass rounded-2xl p-4 border-emerald-500/20 bg-emerald-500/5">
-          <div className="text-[11px] font-semibold uppercase text-emerald-500 flex items-center justify-between">
-            <span>Success Rate</span>
-            <CheckCircle2 className="size-4 text-emerald-500" />
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-emerald-500">
-            {totalRequests ? Math.round((successfulRequests / totalRequests) * 100) : 100}%
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            {successfulRequests} success / {failedRequests} failed
-          </div>
-        </div>
+          <StaggerItem>
+            <GlassCard3D glowColor="emerald" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-500 flex items-center justify-between gap-2">
+                <span>Success Rate</span>
+                <div className="size-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 grid place-items-center text-emerald-500 shrink-0 group-hover:scale-110 transition-transform">
+                  <CheckCircle2 className="size-3.5" />
+                </div>
+              </div>
+              <div className="my-2 font-mono text-2xl font-bold text-emerald-500">
+                {totalRequests ? Math.round((successfulRequests / totalRequests) * 100) : 100}%
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {successfulRequests} ok / {failedRequests} failed
+              </div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <div className="glass rounded-2xl p-4">
-          <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
-            <span>Total Tokens</span>
-            <Zap className="size-4 text-sky-400" />
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold">{totalTokens.toLocaleString()}</div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            In: {totalPromptTokens.toLocaleString()} · Out: {totalCompletionTokens.toLocaleString()}
-          </div>
-        </div>
+          <StaggerItem>
+            <GlassCard3D glowColor="sky" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between gap-2">
+                <span>Total Tokens</span>
+                <div className="size-7 rounded-lg bg-sky-500/15 border border-sky-500/30 grid place-items-center text-sky-500 shrink-0 group-hover:scale-110 transition-transform">
+                  <Zap className="size-3.5" />
+                </div>
+              </div>
+              <div className="my-2 font-mono text-2xl font-bold">{totalTokens.toLocaleString()}</div>
+              <div className="text-[11px] text-muted-foreground">
+                In: {totalPromptTokens.toLocaleString()} · Out: {totalCompletionTokens.toLocaleString()}
+              </div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <div className="glass rounded-2xl p-4 border-amber-500/20 bg-amber-500/5">
-          <div className="text-[11px] font-semibold uppercase text-amber-500 flex items-center justify-between">
-            <span>Active Model</span>
-            <Cpu className="size-4 text-amber-500" />
-          </div>
-          <div className="mt-1 font-mono text-sm font-bold text-foreground truncate">
-            {settings.data?.model?.replace(/^google\//, "") || "gemini-3.1-flash-lite"}
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">Google Gemini API Direct</div>
-        </div>
+          <StaggerItem>
+            <GlassCard3D glowColor="amber" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-amber-500 flex items-center justify-between gap-2">
+                <span>Active Model</span>
+                <div className="size-7 rounded-lg bg-amber-500/15 border border-amber-500/30 grid place-items-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
+                  <Cpu className="size-3.5" />
+                </div>
+              </div>
+              <div className="my-2 font-mono text-sm font-bold text-foreground truncate">
+                {settings.data?.model?.replace(/^google\//, "") || "gemini-3.1-flash-lite"}
+              </div>
+              <div className="text-[11px] text-muted-foreground">Google Gemini Direct</div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <div className="glass rounded-2xl p-4 border-primary/20 bg-primary/5">
-          <div className="text-[11px] font-semibold uppercase text-primary flex items-center justify-between">
-            <span>Estimated Cost</span>
-            <Coins className="size-4 text-primary" />
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-primary">
-            ${totalCostUsd.toFixed(4)}
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">Gemini 3.1 Flash Lite rates</div>
-        </div>
-      </div>
+          <StaggerItem>
+            <GlassCard3D glowColor="terracotta" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-primary flex items-center justify-between gap-2">
+                <span>Estimated Cost</span>
+                <div className="size-7 rounded-lg bg-primary/15 border border-primary/30 grid place-items-center text-primary shrink-0 group-hover:scale-110 transition-transform">
+                  <Coins className="size-3.5" />
+                </div>
+              </div>
+              <div className="my-2 font-mono text-2xl font-bold text-primary">
+                ${totalCostUsd.toFixed(4)}
+              </div>
+              <div className="text-[11px] text-muted-foreground">Calculated Gemini rates</div>
+            </GlassCard3D>
+          </StaggerItem>
+        </StaggerContainer>
+      )}
 
       {/* Charts Grid */}
       <div className="grid gap-4 md:grid-cols-2 mb-6">

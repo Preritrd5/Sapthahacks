@@ -33,7 +33,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, ScaleOnHover } from "@/components/ui/motion-primitives";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
+import { StatCardSkeleton, TableSkeleton } from "@/components/ui/skeleton";
 import { EvaluationProgressModal } from "@/components/evaluation-progress-modal";
 import { useTeamRows, useSettings, type TeamRow } from "@/lib/queries";
 import { COMPONENTS, COMPONENT_LABEL } from "@/lib/scoring";
@@ -197,70 +199,105 @@ function Dashboard() {
         </PageHeader>
       </FadeIn>
 
-      {/* Top InnovJudge Metric Cards with Staggered Entrance */}
-      <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
-        <StaggerItem className="glass rounded-2xl p-4">
-          <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
-            <span>Total Teams</span>
-            <Users className="size-4 text-primary" />
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold">
-            <AnimatedNumber value={totalTeams} precision={0} />
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">Registered hackathon teams</div>
-        </StaggerItem>
+      {/* Top InnovJudge Metric Cards with Staggered Entrance & 3D Interactive Tilting */}
+      {rows.isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+        </div>
+      ) : (
+        <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(217, 90, 43, 0.22)"
+              className="p-4 border-border/80 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
+                <span>Total Teams</span>
+                <Users className="size-4 text-primary transition-transform duration-300 group-hover:scale-125" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold">
+                <AnimatedNumber value={totalTeams} precision={0} />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Registered hackathon teams</div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <StaggerItem className="glass rounded-2xl p-4 border-emerald-500/20 bg-emerald-500/5">
-          <div className="text-[11px] font-semibold uppercase text-emerald-500 flex items-center justify-between">
-            <span>Completed</span>
-            <CheckCircle2 className="size-4 text-emerald-500" />
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-emerald-500">
-            <AnimatedNumber value={completedTeams} precision={0} />
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            {totalTeams ? Math.round((completedTeams / totalTeams) * 100) : 0}% fully evaluated
-          </div>
-        </StaggerItem>
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(16, 185, 129, 0.22)"
+              className="p-4 border-emerald-500/25 bg-emerald-500/5 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-emerald-500 flex items-center justify-between">
+                <span>Completed</span>
+                <CheckCircle2 className="size-4 text-emerald-500 transition-transform duration-300 group-hover:scale-125" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold text-emerald-500">
+                <AnimatedNumber value={completedTeams} precision={0} />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {totalTeams ? Math.round((completedTeams / totalTeams) * 100) : 0}% fully evaluated
+              </div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <StaggerItem className="glass rounded-2xl p-4 border-amber-500/20 bg-amber-500/5">
-          <div className="text-[11px] font-semibold uppercase text-amber-500 flex items-center justify-between">
-            <span>Pending Evaluation</span>
-            <Clock className="size-4 text-amber-500" />
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-amber-500">
-            <AnimatedNumber value={pendingTeams} precision={0} />
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">Awaiting manual trigger</div>
-        </StaggerItem>
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(245, 158, 11, 0.22)"
+              className="p-4 border-amber-500/25 bg-amber-500/5 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-amber-500 flex items-center justify-between">
+                <span>Pending Evaluation</span>
+                <Clock className="size-4 text-amber-500 transition-transform duration-300 group-hover:scale-125" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold text-amber-500">
+                <AnimatedNumber value={pendingTeams} precision={0} />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Awaiting manual trigger</div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <StaggerItem className="glass rounded-2xl p-4">
-          <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
-            <span>Average Score</span>
-            <Trophy className="size-4 text-primary" />
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-foreground">
-            <AnimatedNumber value={avgScore} precision={1} />{" "}
-            <span className="text-xs font-normal text-muted-foreground">/ 100</span>
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">Across completed teams</div>
-        </StaggerItem>
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(217, 90, 43, 0.22)"
+              className="p-4 border-border/80 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
+                <span>Average Score</span>
+                <Trophy className="size-4 text-primary transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold text-foreground">
+                <AnimatedNumber value={avgScore} precision={1} />{" "}
+                <span className="text-xs font-normal text-muted-foreground">/ 100</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Across completed teams</div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <StaggerItem className="glass rounded-2xl p-4 border-rose-500/20 bg-rose-500/5">
-          <div className="text-[11px] font-semibold uppercase text-rose-500 flex items-center justify-between">
-            <span>Plagiarism Alerts</span>
-            <ShieldAlert className="size-4 text-rose-500" />
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-rose-500">
-            <AnimatedNumber value={flaggedTeams} precision={0} />
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            <Link to="/plagiarism" className="text-rose-500 underline hover:text-rose-600">
-              Review in Plagiarism &rarr;
-            </Link>
-          </div>
-        </StaggerItem>
-      </StaggerContainer>
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(244, 63, 94, 0.22)"
+              className="p-4 border-rose-500/25 bg-rose-500/5 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-rose-500 flex items-center justify-between">
+                <span>Plagiarism Alerts</span>
+                <ShieldAlert className="size-4 text-rose-500 transition-transform duration-300 group-hover:scale-125" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold text-rose-500">
+                <AnimatedNumber value={flaggedTeams} precision={0} />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                <Link to="/plagiarism" className="text-rose-500 underline hover:text-rose-600 font-medium">
+                  Review in Plagiarism &rarr;
+                </Link>
+              </div>
+            </GlassCard3D>
+          </StaggerItem>
+        </StaggerContainer>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="mb-4 flex flex-col sm:flex-row gap-2">
@@ -301,7 +338,7 @@ function Dashboard() {
 
       {/* Main Team Evaluation Table */}
       {rows.isLoading ? (
-        <div className="glass h-64 rounded-2xl animate-pulse" />
+        <TableSkeleton rows={6} cols={7} />
       ) : !list.length ? (
         <div className="glass rounded-2xl p-12 text-center text-muted-foreground">
           <p className="font-semibold text-foreground">No teams found matching your filters.</p>
@@ -332,7 +369,7 @@ function Dashboard() {
                 return (
                   <tr
                     key={team.id}
-                    className="border-b border-border/40 hover:bg-muted/20 transition-colors"
+                    className="border-b border-border/40 hover:bg-muted/35 hover:shadow-xs transition-all duration-200 group"
                   >
                     {/* Team Details */}
                     <td className="p-3.5 pl-4 max-w-xs">

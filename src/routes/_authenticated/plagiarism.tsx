@@ -30,7 +30,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, PulsingScanner } from "@/components/ui/motion-primitives";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
+import { StatCardSkeleton, CardGridSkeleton } from "@/components/ui/skeleton";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
 import {
   runComprehensivePlagiarismScan,
@@ -194,54 +196,105 @@ function PlagiarismPage() {
         </PageHeader>
       </FadeIn>
 
-      {/* Overview Stat Cards with Staggered Entrance */}
-      <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
-        <StaggerItem className="glass rounded-2xl p-4">
-          <div className="text-[11px] font-semibold uppercase text-muted-foreground">Teams Analyzed</div>
-          <div className="mt-1 font-mono text-2xl font-bold">
-            <AnimatedNumber value={totalScanned} precision={0} />
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">Multi-vector checks</div>
-        </StaggerItem>
+      {/* Active Live Scanner Effect */}
+      {scanning && (
+        <FadeIn className="mb-5">
+          <PulsingScanner label="Multi-Vector Plagiarism Detection Engine Active" />
+        </FadeIn>
+      )}
 
-        <StaggerItem className="glass rounded-2xl p-4 border-rose-500/30 bg-rose-500/5">
-          <div className="text-[11px] font-semibold uppercase text-rose-500 flex items-center gap-1">
-            <ShieldAlert className="size-3.5" /> High Similarity
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-rose-500">
-            <AnimatedNumber value={highRiskCount} precision={0} />
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">&gt;50% code/PDF overlap</div>
-        </StaggerItem>
+      {/* Overview Stat Cards with Staggered Entrance & 3D Interactive Tilting */}
+      {rows.isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+        </div>
+      ) : (
+        <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(217, 90, 43, 0.2)"
+              className="p-4 border-border/80 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
+                <span>Teams Analyzed</span>
+                <CheckCircle2 className="size-4 text-primary transition-transform duration-300 group-hover:scale-125" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold">
+                <AnimatedNumber value={totalScanned} precision={0} />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Multi-vector checks</div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <StaggerItem className="glass rounded-2xl p-4 border-amber-500/30 bg-amber-500/5">
-          <div className="text-[11px] font-semibold uppercase text-amber-500 flex items-center gap-1">
-            <AlertTriangle className="size-3.5" /> Medium Overlap
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-amber-500">
-            <AnimatedNumber value={mediumRiskCount} precision={0} />
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">35% - 50% overlap</div>
-        </StaggerItem>
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(244, 63, 94, 0.28)"
+              className="p-4 border-rose-500/30 bg-rose-500/5 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-rose-500 flex items-center justify-between">
+                <span>High Similarity</span>
+                <ShieldAlert className="size-4 text-rose-500 transition-transform duration-300 group-hover:scale-125" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold text-rose-500">
+                <AnimatedNumber value={highRiskCount} precision={0} />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">&gt;50% code/PDF overlap</div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <StaggerItem className="glass rounded-2xl p-4 border-primary/30 bg-primary/5">
-          <div className="text-[11px] font-semibold uppercase text-primary flex items-center gap-1">
-            <Info className="size-3.5" /> Needs Admin Review
-          </div>
-          <div className="mt-1 font-mono text-2xl font-bold text-primary">
-            <AnimatedNumber value={pendingReviewCount} precision={0} />
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">Admin final decision required</div>
-        </StaggerItem>
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(245, 158, 11, 0.25)"
+              className="p-4 border-amber-500/30 bg-amber-500/5 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-amber-500 flex items-center justify-between">
+                <span>Medium Overlap</span>
+                <AlertTriangle className="size-4 text-amber-500 transition-transform duration-300 group-hover:scale-125" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold text-amber-500">
+                <AnimatedNumber value={mediumRiskCount} precision={0} />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">35% - 50% overlap</div>
+            </GlassCard3D>
+          </StaggerItem>
 
-        <StaggerItem className="glass rounded-2xl p-4">
-          <div className="text-[11px] font-semibold uppercase text-muted-foreground">Actions Taken</div>
-          <div className="mt-1 font-mono text-2xl font-bold text-foreground">
-            <AnimatedNumber value={confirmedPlagiarismCount} precision={0} />
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">Penalized / Disqualified</div>
-        </StaggerItem>
-      </StaggerContainer>
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(217, 90, 43, 0.22)"
+              className="p-4 border-primary/30 bg-primary/5 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-primary flex items-center justify-between">
+                <span>Needs Admin Review</span>
+                <Info className="size-4 text-primary transition-transform duration-300 group-hover:scale-125" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold text-primary">
+                <AnimatedNumber value={pendingReviewCount} precision={0} />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Admin final decision required</div>
+            </GlassCard3D>
+          </StaggerItem>
+
+          <StaggerItem>
+            <GlassCard3D
+              glowColor="rgba(16, 185, 129, 0.2)"
+              className="p-4 border-border/80 group"
+            >
+              <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
+                <span>Actions Taken</span>
+                <Sparkles className="size-4 text-emerald-500 transition-transform duration-300 group-hover:scale-125" />
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold text-foreground">
+                <AnimatedNumber value={confirmedPlagiarismCount} precision={0} />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">Penalized / Disqualified</div>
+            </GlassCard3D>
+          </StaggerItem>
+        </StaggerContainer>
+      )}
 
       {/* Boilerplate Filter Notice Banner */}
       <div className="mb-4 rounded-xl border border-primary/20 bg-primary/10 p-3.5 text-xs flex items-start gap-2.5">
@@ -292,7 +345,9 @@ function PlagiarismPage() {
       </div>
 
       {/* Main Team Plagiarism Cards */}
-      {!filteredList.length ? (
+      {rows.isLoading ? (
+        <CardGridSkeleton count={4} className="grid-cols-1" />
+      ) : !filteredList.length ? (
         <div className="glass rounded-2xl p-12 text-center text-muted-foreground">
           <ShieldCheck className="size-10 text-emerald-500 mx-auto mb-2 opacity-80" />
           <p className="font-semibold text-foreground">No matching submissions found</p>

@@ -7,6 +7,7 @@ import { CheckCircle2, AlertCircle, Loader2, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { RouteLoadingView } from "@/components/ui/innovedge-loader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,7 +47,14 @@ function SettingsPage() {
     getStatus().then(setAiStatus).catch(() => {});
   }, [getStatus]);
 
-  if (!f) return <div className="glass h-96 animate-pulse rounded-2xl" />;
+  if (!f) {
+    return (
+      <RouteLoadingView
+        label="Loading System Settings..."
+        sublabel="Retrieving AI model configurations and evaluation weights"
+      />
+    );
+  }
 
   const handleTestConnection = async () => {
     setTesting(true);
@@ -160,10 +168,11 @@ function SettingsPage() {
               variant="outline"
               size="sm"
               onClick={handleTestConnection}
-              disabled={testing}
+              loading={testing}
+              loadingText="Testing Gemini 3.1 Flash Lite Connection..."
               className="gap-2"
             >
-              {testing ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5 text-primary" />}
+              <Zap className="size-3.5 text-primary" />
               Test Gemini 3.1 Flash Lite Connection
             </Button>
 

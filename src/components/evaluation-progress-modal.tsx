@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnimatedProgress } from "@/components/ui/animated-progress";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { PulsingScanner, ScaleOnHover } from "@/components/ui/motion-primitives";
+import { InnovedgeLoader } from "@/components/ui/innovedge-loader";
 import { type TeamRow } from "@/lib/queries";
 import { type Component, COMPONENT_LABEL } from "@/lib/scoring";
 import { type EvaluationProgress } from "@/lib/evaluation-engine";
@@ -109,8 +110,8 @@ export function EvaluationProgressModal({
 
             <div className="shrink-0">
               {isEvaluating ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/30 animate-pulse">
-                  <Loader2 className="size-3.5 animate-spin" /> Evaluating
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/30">
+                  <InnovedgeLoader size="xs" /> Evaluating
                 </span>
               ) : isCompleted ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/activity")({
@@ -31,15 +32,59 @@ function Activity() {
         <div className="glass rounded-2xl p-5">
           <h3 className="mb-3 font-semibold">Admin activity</h3>
           <div className="max-h-[70vh] space-y-2 overflow-y-auto text-sm">
-            {!list.length && <p className="text-muted-foreground">No activity yet.</p>}
-            {list.map((l) => <div key={l.id} className="border-b border-border/50 pb-2"><div className="flex justify-between"><span className="font-medium">{l.action}</span><span className="text-xs text-muted-foreground">{new Date(l.created_at).toLocaleString()}</span></div><div className="text-xs text-muted-foreground">{l.actor_email}{l.details && ` · ${l.details}`}</div></div>)}
+            {logs.isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="border-b border-border/40 pb-2.5 space-y-1.5">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-32 rounded" />
+                    <Skeleton className="h-3 w-20 rounded" />
+                  </div>
+                  <Skeleton className="h-3 w-48 rounded" />
+                </div>
+              ))
+            ) : !list.length ? (
+              <p className="text-muted-foreground">No activity yet.</p>
+            ) : (
+              list.map((l) => (
+                <div key={l.id} className="border-b border-border/50 pb-2">
+                  <div className="flex justify-between">
+                    <span className="font-medium">{l.action}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(l.created_at).toLocaleString()}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{l.actor_email}{l.details && ` · ${l.details}`}</div>
+                </div>
+              ))
+            )}
           </div>
         </div>
         <div className="glass rounded-2xl p-5">
           <h3 className="mb-3 font-semibold">Score changes</h3>
           <div className="max-h-[70vh] space-y-2 overflow-y-auto text-sm">
-            {!overrides.data?.length && <p className="text-muted-foreground">No score edits yet.</p>}
-            {overrides.data?.map((o: any) => <div key={o.id} className="border-b border-border/50 pb-2"><div className="flex justify-between"><span>{o.teams?.name} · {o.field}</span><span className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</span></div><div className="text-xs text-muted-foreground"><span className="font-mono">{o.previous_value ?? "—"} → {o.new_value ?? "—"}</span> · {o.reason}</div></div>)}
+            {overrides.isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="border-b border-border/40 pb-2.5 space-y-1.5">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-36 rounded" />
+                    <Skeleton className="h-3 w-20 rounded" />
+                  </div>
+                  <Skeleton className="h-3 w-40 rounded" />
+                </div>
+              ))
+            ) : !overrides.data?.length ? (
+              <p className="text-muted-foreground">No score edits yet.</p>
+            ) : (
+              overrides.data?.map((o: any) => (
+                <div key={o.id} className="border-b border-border/50 pb-2">
+                  <div className="flex justify-between">
+                    <span>{o.teams?.name} · {o.field}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-mono">{o.previous_value ?? "—"} → {o.new_value ?? "—"}</span> · {o.reason}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

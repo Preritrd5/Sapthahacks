@@ -28,6 +28,7 @@ import { AnimatedProgress } from "@/components/ui/animated-progress";
 import { EvaluationProgressModal } from "@/components/evaluation-progress-modal";
 import { ScoreBreakdownModal } from "@/components/score-breakdown-modal";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { RouteLoadingView } from "@/components/ui/innovedge-loader";
 import { useTeamRows, useWeights } from "@/lib/queries";
 import { updatePersistentTeam, deletePersistentTeam, getPersistentMembers } from "@/lib/team-store";
 import { DeleteTeamModal } from "@/components/delete-team-modal";
@@ -131,7 +132,14 @@ function TeamPage() {
     }
   }, [t?.id]);
 
-  if (rows.isLoading) return <div className="glass h-96 animate-pulse rounded-2xl" />;
+  if (rows.isLoading) {
+    return (
+      <RouteLoadingView
+        label="Loading Team Inspection..."
+        sublabel="Retrieving evaluation metrics, source repository, and artifacts"
+      />
+    );
+  }
   if (!t) return <p className="p-8 text-center text-muted-foreground">Team not found.</p>;
 
   const uid = async () => (await supabase.auth.getUser()).data.user?.id ?? null;

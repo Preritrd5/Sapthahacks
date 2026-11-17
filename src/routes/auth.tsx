@@ -159,8 +159,12 @@ function AuthPage() {
               </div>
             )}
 
-            <Button type="submit" className="w-full mt-2 font-medium" disabled={busy}>
-              {busy && <Loader2 className="size-4 animate-spin mr-2" />}
+            <Button
+              type="submit"
+              className="w-full mt-2 font-medium"
+              loading={busy}
+              loadingText={mode === "login" ? "Signing in..." : "Sending reset link..."}
+            >
               {mode === "login" ? "Sign In" : "Send reset link"}
             </Button>
           </form>
