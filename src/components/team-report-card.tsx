@@ -1051,7 +1051,7 @@ export function TeamReportCard({
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
           <DialogContent
             hideCloseButton
-            className="max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden border border-border/80 shadow-2xl bg-card"
+            className="no-print max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden border border-border/80 shadow-2xl bg-card"
           >
             {/* Pinned Header Bar with Non-colliding Clean Controls */}
             <div className="no-print flex items-center justify-between px-5 py-3 border-b border-border/60 bg-card/95 backdrop-blur shrink-0 z-20">
@@ -1102,7 +1102,7 @@ export function TeamReportCard({
             </div>
 
             {/* Single Scrollable Container with Custom Sleek Scrollbar (NO DOUBLE SCROLLBARS) */}
-            <div className="report-modal-scroll-area flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/20 custom-scrollbar">
+            <div className="no-print report-modal-scroll-area flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/20 custom-scrollbar">
               <div className="relative mx-auto w-full max-w-4xl">
                 <ScorecardDocument {...sharedDocProps} isPrint={false} />
               </div>

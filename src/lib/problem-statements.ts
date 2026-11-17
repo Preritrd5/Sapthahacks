@@ -12,45 +12,12 @@ export type ProblemStatement = {
   updated_at?: string;
 };
 
-export const DEFAULT_PROBLEM_STATEMENTS: Omit<ProblemStatement, "id">[] = [
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const DEFAULT_PROBLEM_STATEMENTS: ProblemStatement[] = [
   {
+    id: "a1111111-1111-4111-8111-111111111111",
     code: "PS-01",
-    title: "AI-Powered Adaptive Traffic & Mobility Optimization",
-    category: "Smart Cities & IoT",
-    description:
-      "Design and build an intelligent traffic management system that uses computer vision and real-time sensor data to optimize signal timings, alleviate urban bottlenecks, and prioritize emergency vehicles.",
-    requirements:
-      "Demonstrate dynamic signal scheduling algorithms, real-time vehicle flow metrics, and a responsive traffic monitoring dashboard.",
-  },
-  {
-    code: "PS-02",
-    title: "Smart Healthcare Patient Triage & Diagnostic Assistant",
-    category: "Healthcare & MedTech",
-    description:
-      "Develop a secure clinical decision support assistant that aids healthcare providers in symptom triaging, risk stratification, and patient queue prioritization while upholding strict medical data privacy.",
-    requirements:
-      "Explainable AI assessments, HIPAA/GDPR-conscious data handling, urgency scoring, and clinician verification controls.",
-  },
-  {
-    code: "PS-03",
-    title: "Decentralized Digital Identity & Credential Verification",
-    category: "Cybersecurity & Web3",
-    description:
-      "Create a tamper-proof verification portal for academic, government, or employment credentials leveraging cryptographic signatures to prevent credential forgery and streamline background verification.",
-    requirements:
-      "Cryptographic signature validation pipeline, zero-knowledge/privacy-preserving workflow, and an intuitive verifier inspection interface.",
-  },
-  {
-    code: "PS-04",
-    title: "Precision Agriculture & Crop Disease Detection Engine",
-    category: "Agritech & Sustainability",
-    description:
-      "Build an accessible mobile-friendly platform for smallholder farmers that diagnoses crop pathogens from plant imagery and provides geo-targeted organic remedy and irrigation recommendations.",
-    requirements:
-      "Offline-first capability, multimodal disease classification, localized actionable guidance, and soil/weather impact insights.",
-  },
-  {
-    code: "PS-05",
     title: "Messy Data Repair Engine",
     category: "Data Engineering & AI Systems",
     description:
@@ -59,7 +26,8 @@ export const DEFAULT_PROBLEM_STATEMENTS: Omit<ProblemStatement, "id">[] = [
       "Automated schema reconciliation, robust statistical & ML-driven missing value imputation, entity resolution/deduplication, anomaly detection, and interactive before/after data validation reports.",
   },
   {
-    code: "PS-06",
+    id: "b2222222-2222-4222-8222-222222222222",
+    code: "PS-02",
     title: "Automatic Software Bug Repair System",
     category: "Developer Tools & AI Agents",
     description:
@@ -68,7 +36,8 @@ export const DEFAULT_PROBLEM_STATEMENTS: Omit<ProblemStatement, "id">[] = [
       "Static AST and dynamic trace analysis, automated fault localization (FL), constraint-guided LLM patch generation, regression test verification, and automated PR generation with patch explanations.",
   },
   {
-    code: "PS-07",
+    id: "c3333333-3333-4333-8333-333333333333",
+    code: "PS-03",
     title: "Research Claim and Citation Checker",
     category: "Academic Integrity & NLP",
     description:
@@ -77,7 +46,8 @@ export const DEFAULT_PROBLEM_STATEMENTS: Omit<ProblemStatement, "id">[] = [
       "Cross-document citation graph indexing, automated claim extraction, semantic citation context alignment, retracted paper database verification, and confidence-scored claim support/refutation reports.",
   },
   {
-    code: "PS-08",
+    id: "d4444444-4444-4444-8444-444444444444",
+    code: "PS-04",
     title: "Fake News and Deepfake Detection System",
     category: "Cybersecurity & Media Forensics",
     description:
@@ -88,6 +58,7 @@ export const DEFAULT_PROBLEM_STATEMENTS: Omit<ProblemStatement, "id">[] = [
 ];
 
 const LOCAL_STORAGE_KEY = "assessor_problem_statements";
+const DELETED_STORAGE_KEY = "assessor_deleted_problem_statements";
 
 function loadLocal(): ProblemStatement[] {
   if (typeof window === "undefined") return [];
@@ -106,7 +77,60 @@ function saveLocal(items: ProblemStatement[]): void {
   } catch {}
 }
 
+function getDeletedIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DELETED_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function markDeletedId(id: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const deleted = getDeletedIds();
+    if (!deleted.includes(id)) {
+      deleted.push(id);
+      localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(deleted));
+    }
+  } catch {}
+}
+
+const OFFICIAL_TITLES = [
+  "messy data repair engine",
+  "automatic software bug repair system",
+  "research claim and citation checker",
+  "fake news and deepfake detection system",
+];
+
+const LEGACY_DEFAULT_KEYWORDS = [
+  "traffic",
+  "mobility optimization",
+  "triage",
+  "diagnostic assistant",
+  "decentralized digital identity",
+  "credential verification",
+  "precision agriculture",
+  "crop disease",
+];
+
 export async function fetchProblemStatements(): Promise<ProblemStatement[]> {
+  // One-time catalog purge to clean out all legacy default data (Traffic, Healthcare triage, Identity, Agriculture, etc.)
+  if (typeof window !== "undefined") {
+    const catalogV4 = localStorage.getItem("innovedge_ps_catalog_v4");
+    if (!catalogV4) {
+      saveLocal(DEFAULT_PROBLEM_STATEMENTS);
+      localStorage.setItem("innovedge_ps_catalog_v4", "true");
+      return DEFAULT_PROBLEM_STATEMENTS;
+    }
+  }
+
+  const deletedIds = getDeletedIds();
+
+  // Try fetching from Supabase database
+  let dbItems: ProblemStatement[] = [];
   try {
     const { data, error } = await supabase
       .from("evaluation_templates")
@@ -115,71 +139,92 @@ export async function fetchProblemStatements(): Promise<ProblemStatement[]> {
       .order("created_at", { ascending: true });
 
     if (!error && data && data.length > 0) {
-      const parsed: ProblemStatement[] = data.map((row) => {
-        const c = (row.criteria ?? {}) as any;
-        return {
-          id: row.id,
-          code: c.code || row.name.split(" - ")[0] || "PS",
-          title: c.title || (row.name.includes(" - ") ? row.name.split(" - ").slice(1).join(" - ") : row.name),
-          category: c.category || "General",
-          description: c.description || "",
-          requirements: c.requirements || "",
-          created_at: row.created_at,
-          updated_at: c.updated_at || row.created_at,
-        };
-      });
-      // Check if any default challenge is missing, merge it in
-      const missingDefaults = DEFAULT_PROBLEM_STATEMENTS.filter(
-        (d) =>
-          !parsed.some(
-            (p) =>
-              p.code.toLowerCase() === d.code.toLowerCase() ||
-              p.title.toLowerCase() === d.title.toLowerCase()
-          )
-      );
-      const combined = [
-        ...parsed,
-        ...missingDefaults.map((m, idx) => ({ ...m, id: `default-${parsed.length + idx + 1}` })),
-      ];
-      saveLocal(combined);
-      return combined;
+      dbItems = data
+        .map((row) => {
+          const c = (row.criteria ?? {}) as any;
+          return {
+            id: row.id,
+            code: c.code || row.name.split(" - ")[0] || "PS",
+            title: c.title || (row.name.includes(" - ") ? row.name.split(" - ").slice(1).join(" - ") : row.name),
+            category: c.category || "General",
+            description: c.description || "",
+            requirements: c.requirements || "",
+            created_at: row.created_at,
+            updated_at: c.updated_at || row.created_at,
+          };
+        })
+        .filter((ps) => !deletedIds.includes(ps.id));
     }
   } catch (err) {
-    console.warn("Failed to fetch problem statements from database, checking local cache:", err);
+    console.warn("Database fetch warning:", err);
   }
 
-  // Fallback to local storage or defaults
-  const cached = loadLocal();
-  if (cached.length > 0) {
-    const missing = DEFAULT_PROBLEM_STATEMENTS.filter(
-      (d) =>
-        !cached.some(
-          (c) =>
-            c.code.toLowerCase() === d.code.toLowerCase() ||
-            c.title.toLowerCase() === d.title.toLowerCase()
-        )
-    );
-    if (missing.length > 0) {
-      const merged = [
-        ...cached,
-        ...missing.map((m, idx) => ({ ...m, id: `default-${cached.length + idx + 1}` })),
-      ];
-      saveLocal(merged);
-      return merged;
+  // Fallback to local storage
+  const cached = loadLocal().filter((x) => !deletedIds.includes(x.id));
+
+  // Merge DB and cached
+  const combinedMap = new Map<string, ProblemStatement>();
+  cached.forEach((item) => combinedMap.set(item.id, item));
+  dbItems.forEach((item) => combinedMap.set(item.id, item));
+
+  // Filter out any legacy non-official problem statements (e.g. Adaptive Traffic, Healthcare Triage, etc.)
+  const activeItems = Array.from(combinedMap.values()).filter((item) => {
+    const titleLower = item.title.toLowerCase();
+    const isLegacy =
+      item.id.startsWith("default-") ||
+      LEGACY_DEFAULT_KEYWORDS.some((kw) => titleLower.includes(kw));
+    const isOfficial = OFFICIAL_TITLES.some((t) => titleLower.includes(t));
+
+    // If it's an old legacy default statement, purge it permanently from storage and Supabase DB
+    if (isLegacy && !isOfficial) {
+      markDeletedId(item.id);
+      if (UUID_REGEX.test(item.id)) {
+        supabase.from("evaluation_templates").delete().eq("id", item.id).then(() => {});
+      }
+      return false;
     }
-    return cached;
+    return true;
+  });
+
+  // Ensure all 4 official problem statements are present
+  for (const def of DEFAULT_PROBLEM_STATEMENTS) {
+    const found = activeItems.some(
+      (item) => item.title.toLowerCase().trim() === def.title.toLowerCase().trim()
+    );
+    if (!found && !deletedIds.includes(def.id)) {
+      activeItems.push(def);
+    }
   }
 
-  // If completely empty, return defaults with generated IDs
-  const initial = DEFAULT_PROBLEM_STATEMENTS.map((ps, i) => ({
-    ...ps,
-    id: `default-${i + 1}`,
-  }));
-  saveLocal(initial);
-  return initial;
+  // Normalize codes for the 4 official problem statements to PS-01, PS-02, PS-03, PS-04
+  const codeMapping: Record<string, string> = {
+    "messy data repair engine": "PS-01",
+    "automatic software bug repair system": "PS-02",
+    "research claim and citation checker": "PS-03",
+    "fake news and deepfake detection system": "PS-04",
+  };
+
+  const normalized = activeItems.map((item) => {
+    const match = OFFICIAL_TITLES.find((t) => item.title.toLowerCase().includes(t));
+    if (match && codeMapping[match]) {
+      return { ...item, code: codeMapping[match] };
+    }
+    return item;
+  });
+
+  // Sort by code PS-01 to PS-04
+  normalized.sort((a, b) => a.code.localeCompare(b.code));
+
+  saveLocal(normalized);
+  return normalized;
 }
 
 export async function createProblemStatement(ps: Omit<ProblemStatement, "id">): Promise<ProblemStatement> {
+  const generatedId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `00000000-0000-4000-8000-${Date.now().toString(16).padStart(12, "0")}`;
+
   const name = `${ps.code} - ${ps.title}`;
   const criteriaPayload = {
     code: ps.code.trim(),
@@ -190,85 +235,108 @@ export async function createProblemStatement(ps: Omit<ProblemStatement, "id">): 
     updated_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase
-    .from("evaluation_templates")
-    .insert({
-      component: "problem_statement",
-      name,
-      criteria: criteriaPayload as any,
-    })
-    .select()
-    .single();
+  let id = generatedId;
+  try {
+    const { data, error } = await supabase
+      .from("evaluation_templates")
+      .insert({
+        component: "problem_statement",
+        name,
+        criteria: criteriaPayload as any,
+      })
+      .select()
+      .single();
 
-  if (error || !data) {
-    throw new Error(error?.message || "Failed to create problem statement in database.");
+    if (!error && data) {
+      id = data.id;
+    }
+  } catch (err) {
+    console.warn("Database insert skipped, saving locally:", err);
   }
 
   const created: ProblemStatement = {
-    id: data.id,
+    id,
     ...ps,
-    created_at: data.created_at,
+    created_at: new Date().toISOString(),
     updated_at: criteriaPayload.updated_at,
   };
+
   const existing = loadLocal();
   saveLocal([...existing.filter((x) => x.id !== created.id), created]);
-  await logActivity("Added problem statement", `${created.code}: ${created.title}`);
+  try {
+    await logActivity("Added problem statement", `${created.code}: ${created.title}`);
+  } catch {}
   return created;
 }
 
 export async function updateProblemStatement(id: string, ps: Partial<ProblemStatement>): Promise<void> {
-  const { data: existing, error: fetchError } = await supabase
-    .from("evaluation_templates")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  // If it's a valid UUID, attempt database update
+  if (UUID_REGEX.test(id)) {
+    try {
+      const { data: existing } = await supabase
+        .from("evaluation_templates")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
 
-  if (fetchError || !existing) {
-    throw new Error(fetchError?.message || "Problem statement not found in database.");
-  }
+      if (existing) {
+        const prev = (existing.criteria ?? {}) as any;
+        const updatedCode = (ps.code ?? prev.code ?? "").trim();
+        const updatedTitle = (ps.title ?? prev.title ?? "").trim();
+        const updatedCriteria = {
+          ...prev,
+          code: updatedCode,
+          title: updatedTitle,
+          category: (ps.category ?? prev.category ?? "").trim(),
+          description: (ps.description ?? prev.description ?? "").trim(),
+          requirements: (ps.requirements ?? prev.requirements ?? "").trim(),
+          updated_at: new Date().toISOString(),
+        };
+        const name = `${updatedCode} - ${updatedTitle}`;
 
-  const prev = (existing.criteria ?? {}) as any;
-  const updatedCode = (ps.code ?? prev.code ?? "").trim();
-  const updatedTitle = (ps.title ?? prev.title ?? "").trim();
-  const updatedCriteria = {
-    ...prev,
-    code: updatedCode,
-    title: updatedTitle,
-    category: (ps.category ?? prev.category ?? "").trim(),
-    description: (ps.description ?? prev.description ?? "").trim(),
-    requirements: (ps.requirements ?? prev.requirements ?? "").trim(),
-    updated_at: new Date().toISOString(),
-  };
-  const name = `${updatedCode} - ${updatedTitle}`;
-
-  const { error: updateError } = await supabase
-    .from("evaluation_templates")
-    .update({
-      name,
-      criteria: updatedCriteria as any,
-    })
-    .eq("id", id);
-
-  if (updateError) {
-    throw new Error(updateError.message || "Failed to update problem statement in database.");
+        await supabase
+          .from("evaluation_templates")
+          .update({
+            name,
+            criteria: updatedCriteria as any,
+          })
+          .eq("id", id);
+      }
+    } catch (err) {
+      console.warn("Database update error (handled locally):", err);
+    }
   }
 
   // Update local storage backup
   const list = loadLocal();
   const updatedList = list.map((item) => (item.id === id ? { ...item, ...ps, updated_at: new Date().toISOString() } : item));
   saveLocal(updatedList);
-  await logActivity("Updated problem statement", `${ps.code ?? id}: ${ps.title ?? ""}`);
+  try {
+    await logActivity("Updated problem statement", `${ps.code ?? id}: ${ps.title ?? ""}`);
+  } catch {}
 }
 
 export async function deleteProblemStatement(id: string): Promise<void> {
-  const { error } = await supabase.from("evaluation_templates").delete().eq("id", id);
-  if (error) {
-    throw new Error(error.message || "Failed to delete problem statement from database.");
+  // 1. Mark as deleted so it can never be resurrected
+  markDeletedId(id);
+
+  // 2. Remove from local store immediately
+  const list = loadLocal();
+  const remaining = list.filter((x) => x.id !== id);
+  saveLocal(remaining);
+
+  // 3. If it's a valid UUID, delete from remote database
+  if (UUID_REGEX.test(id)) {
+    try {
+      await supabase.from("evaluation_templates").delete().eq("id", id);
+    } catch (err) {
+      console.warn("Database deletion skipped or failed:", err);
+    }
   }
 
-  const list = loadLocal();
-  saveLocal(list.filter((x) => x.id !== id));
-  await logActivity("Deleted problem statement", id);
+  try {
+    await logActivity("Deleted problem statement", id);
+  } catch {}
 }
 
 export async function seedDefaultProblemStatements(): Promise<ProblemStatement[]> {

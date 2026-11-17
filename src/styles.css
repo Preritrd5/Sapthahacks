@@ -412,7 +412,11 @@ body[data-scroll-locked] {
   /* 2. Suppress Non-Print UI Elements */
   .no-print,
   button,
-  [data-radix-dialog-overlay] {
+  [data-radix-portal],
+  [role="dialog"],
+  [data-radix-dialog-overlay],
+  [data-radix-dialog-content],
+  .report-modal-scroll-area {
     display: none !important;
   }
 
@@ -439,6 +443,8 @@ body[data-scroll-locked] {
     box-shadow: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
     overflow: visible !important;
     translate: none !important;
     transform: none !important;
@@ -454,15 +460,19 @@ body[data-scroll-locked] {
     box-sizing: border-box !important;
     width: 100% !important;
     max-width: 194mm !important;
+    max-height: 275mm !important;
     margin: 0 auto !important;
     padding: 3mm 4mm !important;
     background: #ffffff !important;
     color: #0f172a !important;
     border: 1px solid #cbd5e1 !important;
-    border-radius: 6px !important;
+    border-radius: 4px !important;
     box-shadow: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    overflow: hidden !important;
   }
 
   #innovedge-print-portal .scorecard-sheet > * + * {

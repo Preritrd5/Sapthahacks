@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, Tag, Layers, RefreshCw, Users, FileQuestion, Check } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Tag, Layers, Users, FileQuestion, Check } from "lucide-react";
 import { PageHeader, Empty } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,6 @@ import {
   createProblemStatement,
   updateProblemStatement,
   deleteProblemStatement,
-  seedDefaultProblemStatements,
   type ProblemStatement,
 } from "@/lib/problem-statements";
 
@@ -176,32 +175,19 @@ function ProblemStatementsPage() {
     }
   };
 
-  const handleSeedDefaults = async () => {
-    if (!confirm("Load default curated problem statements? This will add standard challenges to your workspace.")) return;
-    try {
-      await seedDefaultProblemStatements();
-      toast.success("Default problem statements added");
-      qc.invalidateQueries({ queryKey: ["problem-statements"] });
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  };
-
   return (
     <>
-      <PageHeader
-        title="Problem Statements"
-        desc={`${problemStatements.length} problem statement(s) defined. Teams select their project problem statement from this section.`}
-      >
-        <Button variant="secondary" onClick={handleSeedDefaults}>
-          <RefreshCw className="size-4" />
-          Load Defaults
-        </Button>
-        <Button onClick={openCreateDialog}>
-          <Plus className="size-4" />
-          Add Problem Statement
-        </Button>
-      </PageHeader>
+      <FadeIn>
+        <PageHeader
+          title="Problem Statements"
+          desc={`${problemStatements.length} problem statement(s) defined. Teams select their project challenge from this section.`}
+        >
+          <Button onClick={openCreateDialog} className="transition-all hover:scale-105 shadow-xs">
+            <Plus className="size-4 mr-1.5" />
+            Add Problem Statement
+          </Button>
+        </PageHeader>
+      </FadeIn>
 
       {/* Filter and Search Bar */}
       <div className="mb-4 flex flex-col sm:flex-row flex-wrap gap-2">
@@ -234,15 +220,11 @@ function ProblemStatementsPage() {
       ) : filtered.length === 0 ? (
         <Empty
           title="No problem statements found"
-          desc="Add new problem statements for your hackathon or load standard default challenges."
+          desc="Add new problem statements for your hackathon evaluation."
         >
-          <Button onClick={openCreateDialog}>
-            <Plus className="size-4" />
+          <Button onClick={openCreateDialog} className="transition-all hover:scale-105 shadow-xs">
+            <Plus className="size-4 mr-1.5" />
             Add Problem Statement
-          </Button>
-          <Button variant="secondary" onClick={handleSeedDefaults}>
-            <RefreshCw className="size-4" />
-            Load Defaults
           </Button>
         </Empty>
       ) : (

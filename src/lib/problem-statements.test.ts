@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PROBLEM_STATEMENTS,
   formatProblemStatementLabel,
+  deleteProblemStatement,
 } from "./problem-statements";
 
 describe("Problem Statements Service", () => {
   it("provides valid default problem statements", () => {
-    expect(DEFAULT_PROBLEM_STATEMENTS.length).toBeGreaterThan(0);
+    expect(DEFAULT_PROBLEM_STATEMENTS.length).toBe(4);
     for (const ps of DEFAULT_PROBLEM_STATEMENTS) {
       expect(ps.code).toMatch(/^PS-\d+$/);
       expect(ps.title.length).toBeGreaterThan(5);
@@ -25,6 +26,10 @@ describe("Problem Statements Service", () => {
     });
 
     expect(label).toBe("[PS-01] Smart Traffic Flow Optimization");
+  });
+
+  it("handles deletion of legacy non-uuid without error", async () => {
+    await expect(deleteProblemStatement("default-2")).resolves.toBeUndefined();
   });
 });
 

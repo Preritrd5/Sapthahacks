@@ -59,7 +59,7 @@ export function GlassCard3D({
 
   if (shouldReduceMotion) {
     return (
-      <div className={cn("glass rounded-2xl p-4 sm:p-5", className)} onClick={onClick}>
+      <div className={cn("glass rounded-2xl p-5 sm:p-6", className)} onClick={onClick}>
         {children}
       </div>
     );
@@ -87,11 +87,10 @@ export function GlassCard3D({
         } as any}
         className={cn(
           "relative overflow-hidden rounded-2xl border border-border/80",
-          "bg-card/85 backdrop-blur-xl p-4 sm:p-5",
+          "bg-card/85 backdrop-blur-xl h-full",
           "shadow-[0_8px_32px_0_rgba(217,90,43,0.06)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]",
           "transition-all duration-300",
-          isHovered && "shadow-[0_16px_40px_0_rgba(217,90,43,0.18)] border-primary/40",
-          className
+          isHovered && "shadow-[0_16px_40px_0_rgba(217,90,43,0.18)] border-primary/40"
         )}
         onClick={onClick}
       >
@@ -106,7 +105,10 @@ export function GlassCard3D({
         )}
 
         {/* 3D Content Container */}
-        <div style={{ transform: "translateZ(12px)" }} className="relative z-20 size-full">
+        <div
+          style={{ transform: "translateZ(8px)" }}
+          className={cn("relative z-20 w-full h-full p-5 sm:p-6 flex flex-col justify-between", className)}
+        >
           {children}
         </div>
       </motion.div>

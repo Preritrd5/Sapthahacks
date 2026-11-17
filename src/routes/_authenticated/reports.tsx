@@ -223,9 +223,9 @@ function ReportsPage() {
       {/* Top 4 Interactive 3D Metric Showcase */}
       <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <StaggerItem>
-          <GlassCard3D glowColor="amber" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <GlassCard3D glowColor="amber" className="group">
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground leading-normal">
                 Qualified Candidates
               </span>
               <div className="size-8 rounded-xl bg-amber-500/15 border border-amber-500/30 grid place-items-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
@@ -235,16 +235,16 @@ function ReportsPage() {
             <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
               {qualifiedTeams.length}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground pb-0.5">
               Cutoff: <span className="font-semibold text-foreground">{cutoffScore}/100</span> marks
             </div>
           </GlassCard3D>
         </StaggerItem>
 
         <StaggerItem>
-          <GlassCard3D glowColor="terracotta" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <GlassCard3D glowColor="terracotta" className="group">
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground leading-normal">
                 Evaluated Teams
               </span>
               <div className="size-8 rounded-xl bg-primary/15 border border-primary/30 grid place-items-center text-primary shrink-0 group-hover:scale-110 transition-transform">
@@ -254,16 +254,16 @@ function ReportsPage() {
             <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
               {evaluatedCount}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground pb-0.5">
               Across <span className="font-semibold text-foreground">{teams.length}</span> registered teams
             </div>
           </GlassCard3D>
         </StaggerItem>
 
         <StaggerItem>
-          <GlassCard3D glowColor="emerald" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <GlassCard3D glowColor="emerald" className="group">
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground leading-normal">
                 Average Event Score
               </span>
               <div className="size-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 grid place-items-center text-emerald-500 shrink-0 group-hover:scale-110 transition-transform">
@@ -273,16 +273,16 @@ function ReportsPage() {
             <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
               {avgScore} <span className="text-base text-muted-foreground font-normal">/ 100</span>
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground pb-0.5">
               Mean aggregate performance
             </div>
           </GlassCard3D>
         </StaggerItem>
 
         <StaggerItem>
-          <GlassCard3D glowColor="sky" className="p-4 sm:p-5 h-full flex flex-col justify-between group">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <GlassCard3D glowColor="sky" className="group">
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground leading-normal">
                 Integrity Cleared
               </span>
               <div className="size-8 rounded-xl bg-sky-500/15 border border-sky-500/30 grid place-items-center text-sky-500 shrink-0 group-hover:scale-110 transition-transform">
@@ -292,7 +292,7 @@ function ReportsPage() {
             <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
               {cleanIntegrityCount}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground pb-0.5">
               Verified &lt; 35% similarity threshold
             </div>
           </GlassCard3D>
