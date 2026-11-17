@@ -11,6 +11,23 @@ export function downloadBlob(data: BlobPart, name: string, type: string) {
 
 export function exportRows(rows: Record<string, unknown>[], name: string, kind: "csv" | "xlsx") {
   const ws = XLSX.utils.json_to_sheet(rows);
+
+  // Auto-fit column widths so no header or content is truncated
+  if (rows.length > 0) {
+    const keys = Object.keys(rows[0]!);
+    ws["!cols"] = keys.map((key) => {
+      let maxLen = key.length;
+      for (const row of rows) {
+        const val = row[key];
+        const strVal = val != null ? String(val) : "";
+        if (strVal.length > maxLen) {
+          maxLen = Math.min(strVal.length, 65);
+        }
+      }
+      return { wch: Math.max(maxLen + 4, 16) };
+    });
+  }
+
   if (kind === "csv") return downloadBlob(XLSX.utils.sheet_to_csv(ws), `${name}.csv`, "text/csv");
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Sheet1");

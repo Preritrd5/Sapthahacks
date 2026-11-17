@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -20,6 +21,9 @@ import {
   Sparkles,
   BarChart3,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { updatePersistentTeam } from "@/lib/team-store";
+import { logActivity } from "@/lib/db";
 import { PageHeader, fmt, StatusBadge } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/reports")({
 });
 
 function ReportsPage() {
+  const qc = useQueryClient();
   const rows = useTeamRows();
   const teams = rows.data ?? [];
   const [activeTab, setActiveTab] = useState<"qualified" | "complete">("qualified");
@@ -68,21 +73,45 @@ function ReportsPage() {
     });
   }, [teams]);
 
-  // 1. Qualified Teams
+  // 1. Qualified Teams: Strictly synchronized with Team Qualification status (approved or qualified)
   const qualifiedTeams = useMemo(() => {
     return rankedAll
-      .filter((t) => {
-        const score = t.officialFinal ?? t.aiFinal ?? 0;
-        const isApproved = t.final_status === "approved" || t.final_status === "qualified";
-        const meetsCutoff = score >= cutoffScore;
-        const notRejected = t.final_status !== "rejected";
-        return (isApproved || meetsCutoff) && notRejected;
-      })
+      .filter((t) => t.final_status === "approved" || t.final_status === "qualified")
       .map((t, idx) => ({
         ...t,
         rank: idx + 1,
       }));
-  }, [rankedAll, cutoffScore]);
+  }, [rankedAll]);
+
+  // Auto-Qualify Teams meeting cutoff
+  const handleAutoQualifyCutoff = async () => {
+    const toQualify = rankedAll.filter((t) => {
+      const score = t.officialFinal ?? t.aiFinal ?? 0;
+      const isAlready = t.final_status === "approved" || t.final_status === "qualified";
+      return score >= cutoffScore && !isAlready && t.final_status !== "rejected";
+    });
+
+    if (!toQualify.length) {
+      return toast.info(`No unapproved teams found with score >= ${cutoffScore}.`);
+    }
+
+    if (!confirm(`Mark ${toQualify.length} team(s) with score >= ${cutoffScore} as officially Qualified?`)) return;
+
+    toQualify.forEach((t) => {
+      updatePersistentTeam(t.id, { final_status: "approved", updated_at: new Date().toISOString() });
+    });
+
+    try {
+      await supabase
+        .from("teams")
+        .update({ final_status: "approved", updated_at: new Date().toISOString() })
+        .in("id", toQualify.map((t) => t.id));
+      await logActivity("Auto-qualified teams by cutoff", `${toQualify.length} teams qualified at cutoff ${cutoffScore}`);
+    } catch {}
+
+    qc.invalidateQueries({ queryKey: ["team-rows"] });
+    toast.success(`Successfully qualified ${toQualify.length} teams meeting the cutoff!`);
+  };
 
   // Filtered Qualified
   const filteredQualified = useMemo(() => {
@@ -117,12 +146,12 @@ function ReportsPage() {
       "Leader Email": t.email,
       "Project Title": t.project_title,
       "Final Score": fmt(t.officialFinal ?? t.aiFinal),
-      "PDF Score": fmt(t.evals?.pdf?.final_score),
-      "GitHub Score": fmt(t.evals?.github?.final_score),
-      "Website Score": fmt(t.evals?.website?.final_score),
+      "PDF Score": fmt(t.evals?.pdf?.final_score ?? t.evals?.pdf?.ai_score),
+      "GitHub Score": fmt(t.evals?.github?.final_score ?? t.evals?.github?.ai_score),
+      "Website Score": fmt(t.evals?.website?.final_score ?? t.evals?.website?.ai_score),
       Status: "Qualified",
     }));
-    exportRows(data, `qualified-teams-report-cutoff-${cutoffScore}`, format);
+    exportRows(data, `qualified-teams-report`, format);
   };
 
   // Export Complete Evaluation Report
@@ -130,15 +159,15 @@ function ReportsPage() {
     if (!rankedAll.length) return toast.error("No teams to export");
     const data = rankedAll.map((t, idx) => {
       const plag = plagiarismMap.get(t.id);
-      const isQualified = qualifiedTeams.some((q) => q.id === t.id);
+      const isQualified = t.final_status === "approved" || t.final_status === "qualified";
       return {
         Rank: idx + 1,
         "Team Name": t.name,
         "Leader Email": t.email,
         "Project Title": t.project_title,
-        "PDF Deck Score": fmt(t.evals?.pdf?.final_score),
-        "GitHub Code Score": fmt(t.evals?.github?.final_score),
-        "Website Score": fmt(t.evals?.website?.final_score),
+        "PDF Deck Score": fmt(t.evals?.pdf?.final_score ?? t.evals?.pdf?.ai_score),
+        "GitHub Code Score": fmt(t.evals?.github?.final_score ?? t.evals?.github?.ai_score),
+        "Website Score": fmt(t.evals?.website?.final_score ?? t.evals?.website?.ai_score),
         "Overall Marks / 100": fmt(t.officialFinal ?? t.aiFinal),
         "Plagiarism PDF %": plag?.pdfSimilarity ?? 0,
         "Plagiarism Code %": plag?.githubSimilarity ?? 0,
@@ -146,7 +175,7 @@ function ReportsPage() {
         "Plagiarism Overall %": plag?.overallSimilarity ?? 0,
         "Plagiarism Reason": plag?.flaggedReason || "Clean",
         "Plagiarism Admin Verdict": plag?.adminDecision || "clean",
-        "Qualification Status": isQualified ? "Qualified" : t.final_status === "rejected" ? "Disqualified" : "Not Qualified",
+        "Qualification Status": isQualified ? "Qualified" : t.final_status === "rejected" ? "Disqualified" : "Pending",
         Remarks: t.remarks || t.override_reason || "",
       };
     });
@@ -157,7 +186,7 @@ function ReportsPage() {
   const exportCompleteJson = () => {
     const data = rankedAll.map((t, idx) => {
       const plag = plagiarismMap.get(t.id);
-      const isQualified = qualifiedTeams.some((q) => q.id === t.id);
+      const isQualified = t.final_status === "approved" || t.final_status === "qualified";
       return {
         rank: idx + 1,
         team_id: t.id,
@@ -165,9 +194,9 @@ function ReportsPage() {
         leader_email: t.email,
         project_title: t.project_title,
         scores: {
-          pdf: t.evals?.pdf?.final_score ?? null,
-          github: t.evals?.github?.final_score ?? null,
-          website: t.evals?.website?.final_score ?? null,
+          pdf: t.evals?.pdf?.final_score ?? t.evals?.pdf?.ai_score ?? null,
+          github: t.evals?.github?.final_score ?? t.evals?.github?.ai_score ?? null,
+          website: t.evals?.website?.final_score ?? t.evals?.website?.ai_score ?? null,
           overall: t.officialFinal ?? t.aiFinal ?? null,
           override: t.final_override ?? null,
         },
@@ -331,7 +360,17 @@ function ReportsPage() {
                 </div>
               </div>
 
-              <div className="relative w-60">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAutoQualifyCutoff}
+                className="text-xs h-8 gap-1.5 border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                title="Mark all teams scoring at or above cutoff as officially Qualified"
+              >
+                <Sparkles className="size-3.5 text-amber-500" /> Auto-Qualify (&ge;{cutoffScore})
+              </Button>
+
+              <div className="relative w-56">
                 <Search className="absolute left-2.5 top-2 size-3.5 text-muted-foreground" />
                 <Input
                   className="pl-8 text-xs h-8"
@@ -367,8 +406,11 @@ function ReportsPage() {
                   <th className="p-3.5 pl-4 w-16 text-center">Rank</th>
                   <th className="p-3.5">Qualified Team Name</th>
                   <th className="p-3.5">Leader Email</th>
-                  <th className="p-3.5">Project Title</th>
-                  <th className="p-3.5 text-center">Overall Score</th>
+                  <th className="p-3.5">Project Challenge</th>
+                  <th className="p-3.5 text-center">PDF</th>
+                  <th className="p-3.5 text-center">GitHub</th>
+                  <th className="p-3.5 text-center">Website</th>
+                  <th className="p-3.5 text-center font-bold text-foreground">Overall Score</th>
                   <th className="p-3.5 text-center">Status</th>
                   <th className="p-3.5 pr-4 text-center">Scorecard</th>
                 </tr>
@@ -376,8 +418,8 @@ function ReportsPage() {
               <tbody>
                 {!filteredQualified.length ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                      No teams meet the qualification cutoff of {cutoffScore} marks. Lower the cutoff or approve teams.
+                    <td colSpan={10} className="p-8 text-center text-muted-foreground">
+                      No teams are currently qualified. Tick teams in Team Qualification or click "Auto-Qualify (&ge;{cutoffScore})" above.
                     </td>
                   </tr>
                 ) : (
@@ -400,6 +442,15 @@ function ReportsPage() {
                       <td className="p-3.5 text-xs text-muted-foreground font-mono">{t.email}</td>
                       <td className="p-3.5 text-xs text-muted-foreground max-w-xs truncate">
                         {t.project_title}
+                      </td>
+                      <td className="p-3.5 text-center font-mono text-xs text-muted-foreground">
+                        {fmt(t.evals?.pdf?.final_score ?? t.evals?.pdf?.ai_score)}
+                      </td>
+                      <td className="p-3.5 text-center font-mono text-xs text-muted-foreground">
+                        {fmt(t.evals?.github?.final_score ?? t.evals?.github?.ai_score)}
+                      </td>
+                      <td className="p-3.5 text-center font-mono text-xs text-muted-foreground">
+                        {fmt(t.evals?.website?.final_score ?? t.evals?.website?.ai_score)}
                       </td>
                       <td className="p-3.5 text-center font-mono text-base font-black text-emerald-500">
                         {fmt(t.officialFinal ?? t.aiFinal)}
@@ -499,15 +550,15 @@ function ReportsPage() {
                         </td>
 
                         <td className="p-3 text-center font-mono">
-                          {t.evals?.pdf?.final_score != null ? fmt(t.evals.pdf.final_score) : "—"}
+                          {fmt(t.evals?.pdf?.final_score ?? t.evals?.pdf?.ai_score)}
                         </td>
 
                         <td className="p-3 text-center font-mono">
-                          {t.evals?.github?.final_score != null ? fmt(t.evals.github.final_score) : "—"}
+                          {fmt(t.evals?.github?.final_score ?? t.evals?.github?.ai_score)}
                         </td>
 
                         <td className="p-3 text-center font-mono">
-                          {t.evals?.website?.final_score != null ? fmt(t.evals.website.final_score) : "—"}
+                          {fmt(t.evals?.website?.final_score ?? t.evals?.website?.ai_score)}
                         </td>
 
                         <td className="p-3 text-center font-mono font-black text-sm text-primary">

@@ -96,6 +96,9 @@ function TeamPage() {
     queryKey: ["pdf-url", t?.pdf_path],
     enabled: !!t?.pdf_path,
     queryFn: async () => {
+      if (t?.pdf_path && /^https?:\/\//i.test(t.pdf_path)) {
+        return t.pdf_path;
+      }
       try {
         const { data, error } = await supabase.storage.from("project-pdfs").createSignedUrl(t!.pdf_path!, 3600);
         if (error) {

@@ -463,17 +463,17 @@ function QualificationPage() {
 
                     {/* PDF Component */}
                     <td className="p-3 text-right font-mono text-xs">
-                      <AnimatedNumber value={t.evals?.pdf?.final_score} precision={1} />
+                      <AnimatedNumber value={t.evals?.pdf?.final_score ?? t.evals?.pdf?.ai_score} precision={1} />
                     </td>
 
                     {/* GitHub Component */}
                     <td className="p-3 text-right font-mono text-xs">
-                      <AnimatedNumber value={t.evals?.github?.final_score} precision={1} />
+                      <AnimatedNumber value={t.evals?.github?.final_score ?? t.evals?.github?.ai_score} precision={1} />
                     </td>
 
                     {/* Website Component */}
                     <td className="p-3 text-right font-mono text-xs">
-                      <AnimatedNumber value={t.evals?.website?.final_score} precision={1} />
+                      <AnimatedNumber value={t.evals?.website?.final_score ?? t.evals?.website?.ai_score} precision={1} />
                     </td>
 
                     {/* Final Score */}

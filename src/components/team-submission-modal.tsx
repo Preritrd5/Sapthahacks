@@ -24,6 +24,9 @@ export function TeamSubmissionModal({ team, isOpen, onClose, defaultTab = "pdf" 
     queryKey: ["pdf-signed-url", team?.pdf_path],
     enabled: isOpen && !!team?.pdf_path,
     queryFn: async () => {
+      if (team?.pdf_path && /^https?:\/\//i.test(team.pdf_path)) {
+        return team.pdf_path;
+      }
       try {
         const { data, error } = await supabase.storage
           .from("project-pdfs")
@@ -149,7 +152,8 @@ export function TeamSubmissionModal({ team, isOpen, onClose, defaultTab = "pdf" 
                   {pdfUrlQuery.data && (
                     <Button size="sm" variant="outline" asChild className="h-7 text-xs gap-1">
                       <a href={pdfUrlQuery.data} target="_blank" rel="noopener noreferrer">
-                        <Download className="size-3" /> Open PDF File
+                        <ExternalLink className="size-3" />
+                        {pdfUrlQuery.data.includes("drive.google.com") ? "Open Google Drive Deck" : "Open Pitch Deck / PDF"}
                       </a>
                     </Button>
                   )}
