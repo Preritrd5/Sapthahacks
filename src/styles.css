@@ -388,14 +388,14 @@ body[data-scroll-locked] {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 6mm 8mm;
+    margin: 4mm 6mm;
   }
 
   /* 1. Global Reset for Print Canvas */
   html,
   body {
     width: 100% !important;
-    min-width: 0 !important;
+    min-width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
@@ -409,34 +409,31 @@ body[data-scroll-locked] {
     print-color-adjust: exact !important;
   }
 
-  /* 2. Suppress Non-Print UI Elements */
+  /* 2. Suppress Non-Print UI Elements and Other Body Children */
   .no-print,
   button,
   [data-radix-portal],
   [role="dialog"],
   [data-radix-dialog-overlay],
   [data-radix-dialog-content],
-  .report-modal-scroll-area {
+  .report-modal-scroll-area,
+  body > *:not(#innovedge-print-portal) {
     display: none !important;
   }
 
   /* 3. DEDICATED SCORECARD PRINT PORTAL ISOLATION
      When the print portal is active, isolate ONLY #innovedge-print-portal.
-     All other root body children (the main application, portal dialog overlays, wrappers) are completely removed from print flow.
+     It spans the full printable page width from edge-to-edge.
   */
-  body.printing-scorecard > *:not(#innovedge-print-portal),
-  body:has(#innovedge-print-portal:not([data-hidden="true"])) > *:not(#innovedge-print-portal) {
-    display: none !important;
-  }
-
-  body.printing-scorecard #innovedge-print-portal,
-  body:has(#innovedge-print-portal:not([data-hidden="true"])) #innovedge-print-portal {
+  #innovedge-print-portal {
     display: block !important;
     visibility: visible !important;
-    position: static !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
-    max-width: 194mm !important; /* Standard printable width on A4 (210mm - 2*8mm margin) */
-    margin: 0 auto !important;
+    max-width: 100% !important;
+    margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     color: #0f172a !important;
@@ -448,6 +445,7 @@ body[data-scroll-locked] {
     overflow: visible !important;
     translate: none !important;
     transform: none !important;
+    box-sizing: border-box !important;
   }
 
   #innovedge-print-portal,
@@ -459,10 +457,9 @@ body[data-scroll-locked] {
   #innovedge-print-portal .scorecard-sheet {
     box-sizing: border-box !important;
     width: 100% !important;
-    max-width: 194mm !important;
-    max-height: 275mm !important;
-    margin: 0 auto !important;
-    padding: 3mm 4mm !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 2.5mm 3.5mm !important;
     background: #ffffff !important;
     color: #0f172a !important;
     border: 1px solid #cbd5e1 !important;
@@ -472,7 +469,6 @@ body[data-scroll-locked] {
     break-inside: avoid !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
-    overflow: hidden !important;
   }
 
   #innovedge-print-portal .scorecard-sheet > * + * {

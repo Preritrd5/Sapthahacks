@@ -119,10 +119,12 @@ const LEGACY_DEFAULT_KEYWORDS = [
 export async function fetchProblemStatements(): Promise<ProblemStatement[]> {
   // One-time catalog purge to clean out all legacy default data (Traffic, Healthcare triage, Identity, Agriculture, etc.)
   if (typeof window !== "undefined") {
-    const catalogV4 = localStorage.getItem("innovedge_ps_catalog_v4");
-    if (!catalogV4) {
+    const catalogV6 = localStorage.getItem("innovedge_ps_catalog_v6");
+    if (!catalogV6) {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      localStorage.removeItem(DELETED_STORAGE_KEY);
       saveLocal(DEFAULT_PROBLEM_STATEMENTS);
-      localStorage.setItem("innovedge_ps_catalog_v4", "true");
+      localStorage.setItem("innovedge_ps_catalog_v6", "true");
       return DEFAULT_PROBLEM_STATEMENTS;
     }
   }

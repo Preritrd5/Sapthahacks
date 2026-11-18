@@ -89,49 +89,49 @@ function ScorecardDocument({
 
   if (isPrint) {
     return (
-      <div className="scorecard-sheet relative border border-slate-300 bg-white p-[3.5mm] rounded text-slate-900 space-y-[2.2mm] break-inside-avoid shadow-none font-sans">
+      <div className="scorecard-sheet relative border border-slate-300 bg-white p-[2.5mm] rounded text-slate-900 space-y-[1.4mm] break-inside-avoid shadow-none font-sans">
         {/* 1. Header Strip with Institutional Brand */}
-        <div className="scorecard-header flex items-center justify-between border-b-2 border-slate-900 pb-[1.8mm] gap-[2mm] break-inside-avoid">
-          <div className="flex items-center gap-2.5">
+        <div className="scorecard-header flex items-center justify-between border-b-2 border-slate-900 pb-[1.2mm] gap-[2mm] break-inside-avoid">
+          <div className="flex items-center gap-2">
             <img
               src="/favicon.png"
               alt="Institutional Seal"
-              className="size-8 object-contain shrink-0"
+              className="size-7 object-contain shrink-0"
             />
             <div>
-              <div className="text-[7.5pt] font-bold tracking-widest text-slate-600 uppercase font-mono">
+              <div className="text-[7pt] font-bold tracking-widest text-slate-600 uppercase font-mono">
                 Sapthagiri Innovation &amp; Hackathon Assessment
               </div>
-              <h1 className="font-display text-[13pt] font-black tracking-tight text-slate-900 leading-tight">
+              <h1 className="font-display text-[12pt] font-black tracking-tight text-slate-900 leading-tight">
                 INNOVEDGE 2026 OFFICIAL SCORECARD
               </h1>
             </div>
           </div>
 
-          <div className="text-right text-[8pt] text-slate-600 space-y-0.5">
-            <div className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-[8.5pt] border border-slate-300 inline-block">
+          <div className="text-right text-[7.5pt] text-slate-600 space-y-0.5">
+            <div className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[8pt] border border-slate-300 inline-block">
               REF: {team.id.slice(0, 10).toUpperCase()}
             </div>
-            <div className="text-[7.5pt] font-medium text-slate-500">
+            <div className="text-[7pt] font-medium text-slate-500">
               Date: {formattedDate}
             </div>
           </div>
         </div>
 
         {/* 2. Team & Project Identification */}
-        <div className="id-grid grid grid-cols-3 gap-[2mm] rounded border border-slate-200 bg-slate-50/70 p-[2.2mm] break-inside-avoid">
+        <div className="id-grid grid grid-cols-3 gap-[2mm] rounded border border-slate-200 bg-slate-50/70 p-[1.8mm] break-inside-avoid">
           <div>
-            <div className="text-[7pt] font-bold uppercase tracking-wider text-slate-500">Team Name</div>
-            <div className="font-display text-[10pt] font-bold text-slate-900 mt-0.5 leading-snug truncate">{team.name}</div>
-            <div className="text-[7.5pt] text-slate-600 font-mono mt-0.5 break-all">{team.email}</div>
+            <div className="text-[6.8pt] font-bold uppercase tracking-wider text-slate-500">Team Name</div>
+            <div className="font-display text-[9.5pt] font-bold text-slate-900 mt-0.5 leading-snug truncate">{team.name}</div>
+            <div className="text-[7pt] text-slate-600 font-mono mt-0.5 break-all">{team.email}</div>
           </div>
 
           <div className="col-span-2">
-            <div className="text-[7pt] font-bold uppercase tracking-wider text-slate-500">Problem Statement &amp; Track</div>
-            <div className="text-[8.5pt] font-semibold text-slate-900 mt-0.5 line-clamp-1">
+            <div className="text-[6.8pt] font-bold uppercase tracking-wider text-slate-500">Problem Statement &amp; Track</div>
+            <div className="text-[8pt] font-semibold text-slate-900 mt-0.5 line-clamp-1">
               {team.project_title || "General Innovation & Rapid Prototyping Track"}
             </div>
-            <div className="text-[7.5pt] text-slate-600 line-clamp-2 mt-0.5 leading-relaxed">
+            <div className="text-[7pt] text-slate-600 line-clamp-2 mt-0.5 leading-relaxed">
               {team.project_description || "Comprehensive software and hardware technical proposal submission."}
             </div>
           </div>
@@ -277,36 +277,36 @@ function ScorecardDocument({
         </div>
 
         {/* 6. Intelligent Evaluation Insights (3 Structured Cards) */}
-        <div className="insights-section space-y-[1.2mm] break-inside-avoid">
-          <div className="text-[7.5pt] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1">
+        <div className="insights-section space-y-[1mm] break-inside-avoid">
+          <div className="text-[7pt] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1">
             <Sparkles className="size-3 text-slate-700" />
             <span>Evaluation Insights &amp; Jury Recommendations</span>
           </div>
 
-          <div className="insights-grid grid grid-cols-3 gap-[2mm]">
+          <div className="insights-grid grid grid-cols-3 gap-[1.5mm]">
             {/* Card 1: Key Strengths (Emerald) */}
-            <div className="rounded border border-emerald-300 bg-emerald-50/60 p-[2mm] flex flex-col justify-between break-inside-avoid">
+            <div className="rounded border border-emerald-300 bg-emerald-50/60 p-[1.5mm] flex flex-col justify-between break-inside-avoid">
               <div>
-                <div className="flex items-center gap-1.5 mb-1 pb-1 border-b border-emerald-200 text-emerald-900">
-                  <Trophy className="size-3 text-emerald-700 shrink-0" />
-                  <span className="font-display font-bold text-[7.5pt] uppercase tracking-wider">Key Strengths</span>
+                <div className="flex items-center gap-1 mb-0.5 pb-0.5 border-b border-emerald-200 text-emerald-900">
+                  <Trophy className="size-2.5 text-emerald-700 shrink-0" />
+                  <span className="font-display font-bold text-[7pt] uppercase tracking-wider">Key Strengths</span>
                 </div>
-                <ul className="space-y-[1mm] leading-relaxed">
+                <ul className="space-y-[0.8mm] leading-relaxed">
                   {insights.strengths.length === 0 ? (
-                    <li className="text-[7pt] text-slate-500 italic">No specific strengths flagged yet.</li>
+                    <li className="text-[6.5pt] text-slate-500 italic">No specific strengths flagged yet.</li>
                   ) : (
-                    insights.strengths.slice(0, 3).map((item, idx) => {
+                    insights.strengths.slice(0, 2).map((item, idx) => {
                       const isObj = typeof item === "object" && item !== null;
                       const title = isObj ? item.title : String(item);
                       const desc = isObj ? item.description : null;
                       return (
-                        <li key={idx} className="space-y-0.5">
-                          <div className="font-semibold text-emerald-950 text-[7.2pt] flex items-baseline gap-1">
+                        <li key={idx} className="space-y-0.2">
+                          <div className="font-semibold text-emerald-950 text-[6.8pt] flex items-baseline gap-1">
                             <span className="size-1 rounded-full bg-emerald-600 shrink-0 self-center" />
                             <span className="leading-snug">{title}</span>
                           </div>
                           {desc && (
-                            <p className="text-[6.8pt] text-emerald-900/80 pl-2 leading-tight line-clamp-2">{desc}</p>
+                            <p className="text-[6.2pt] text-emerald-900/80 pl-2 leading-tight line-clamp-1">{desc}</p>
                           )}
                         </li>
                       );
@@ -317,28 +317,28 @@ function ScorecardDocument({
             </div>
 
             {/* Card 2: Areas to Improve (Rose) */}
-            <div className="rounded border border-rose-300 bg-rose-50/60 p-[2mm] flex flex-col justify-between break-inside-avoid">
+            <div className="rounded border border-rose-300 bg-rose-50/60 p-[1.5mm] flex flex-col justify-between break-inside-avoid">
               <div>
-                <div className="flex items-center gap-1.5 mb-1 pb-1 border-b border-rose-200 text-rose-900">
-                  <AlertTriangle className="size-3 text-rose-700 shrink-0" />
-                  <span className="font-display font-bold text-[7.5pt] uppercase tracking-wider">Areas to Improve</span>
+                <div className="flex items-center gap-1 mb-0.5 pb-0.5 border-b border-rose-200 text-rose-900">
+                  <AlertTriangle className="size-2.5 text-rose-700 shrink-0" />
+                  <span className="font-display font-bold text-[7pt] uppercase tracking-wider">Areas to Improve</span>
                 </div>
-                <ul className="space-y-[1mm] leading-relaxed">
+                <ul className="space-y-[0.8mm] leading-relaxed">
                   {insights.areasToImprove.length === 0 ? (
-                    <li className="text-[7pt] text-slate-500 italic">No specific improvement areas flagged yet.</li>
+                    <li className="text-[6.5pt] text-slate-500 italic">No specific improvement areas flagged yet.</li>
                   ) : (
-                    insights.areasToImprove.slice(0, 3).map((item, idx) => {
+                    insights.areasToImprove.slice(0, 2).map((item, idx) => {
                       const isObj = typeof item === "object" && item !== null;
                       const title = isObj ? item.title : String(item);
                       const desc = isObj ? item.description : null;
                       return (
-                        <li key={idx} className="space-y-0.5">
-                          <div className="font-semibold text-rose-950 text-[7.2pt] flex items-baseline gap-1">
+                        <li key={idx} className="space-y-0.2">
+                          <div className="font-semibold text-rose-950 text-[6.8pt] flex items-baseline gap-1">
                             <span className="size-1 rounded-full bg-rose-600 shrink-0 self-center" />
                             <span className="leading-snug">{title}</span>
                           </div>
                           {desc && (
-                            <p className="text-[6.8pt] text-rose-900/80 pl-2 leading-tight line-clamp-2">{desc}</p>
+                            <p className="text-[6.2pt] text-rose-900/80 pl-2 leading-tight line-clamp-1">{desc}</p>
                           )}
                         </li>
                       );
@@ -349,28 +349,28 @@ function ScorecardDocument({
             </div>
 
             {/* Card 3: Suggestions (Sky) */}
-            <div className="rounded border border-sky-300 bg-sky-50/60 p-[2mm] flex flex-col justify-between break-inside-avoid">
+            <div className="rounded border border-sky-300 bg-sky-50/60 p-[1.5mm] flex flex-col justify-between break-inside-avoid">
               <div>
-                <div className="flex items-center gap-1.5 mb-1 pb-1 border-b border-sky-200 text-sky-900">
-                  <Sparkles className="size-3 text-sky-700 shrink-0" />
-                  <span className="font-display font-bold text-[7.5pt] uppercase tracking-wider">Suggestions</span>
+                <div className="flex items-center gap-1 mb-0.5 pb-0.5 border-b border-sky-200 text-sky-900">
+                  <Sparkles className="size-2.5 text-sky-700 shrink-0" />
+                  <span className="font-display font-bold text-[7pt] uppercase tracking-wider">Suggestions</span>
                 </div>
-                <ul className="space-y-[1mm] leading-relaxed">
+                <ul className="space-y-[0.8mm] leading-relaxed">
                   {insights.suggestions.length === 0 ? (
-                    <li className="text-[7pt] text-slate-500 italic">No action recommendations generated yet.</li>
+                    <li className="text-[6.5pt] text-slate-500 italic">No action recommendations generated yet.</li>
                   ) : (
-                    insights.suggestions.slice(0, 3).map((item, idx) => {
+                    insights.suggestions.slice(0, 2).map((item, idx) => {
                       const isObj = typeof item === "object" && item !== null;
                       const title = isObj ? item.title : String(item);
                       const desc = isObj ? item.description : null;
                       return (
-                        <li key={idx} className="space-y-0.5">
-                          <div className="font-semibold text-sky-950 text-[7.2pt] flex items-baseline gap-1">
+                        <li key={idx} className="space-y-0.2">
+                          <div className="font-semibold text-sky-950 text-[6.8pt] flex items-baseline gap-1">
                             <span className="size-1 rounded-full bg-sky-600 shrink-0 self-center" />
                             <span className="leading-snug">{title}</span>
                           </div>
                           {desc && (
-                            <p className="text-[6.8pt] text-sky-900/80 pl-2 leading-tight line-clamp-2">{desc}</p>
+                            <p className="text-[6.2pt] text-sky-900/80 pl-2 leading-tight line-clamp-1">{desc}</p>
                           )}
                         </li>
                       );
@@ -383,26 +383,26 @@ function ScorecardDocument({
         </div>
 
         {/* 7. Verification Footer & Institutional Seal */}
-        <div className="scorecard-footer pt-[1.8mm] border-t-2 border-slate-300 flex items-center justify-between text-[7pt] text-slate-600 break-inside-avoid">
+        <div className="scorecard-footer pt-[1.2mm] border-t-2 border-slate-300 flex items-center justify-between text-[6.8pt] text-slate-600 break-inside-avoid">
           <div>
-            <div className="font-semibold text-slate-900 text-[7.5pt]">INNOVEDGE Hackathon Committee</div>
+            <div className="font-semibold text-slate-900 text-[7pt]">INNOVEDGE Hackathon Committee</div>
             <div>Sapthagiri Innovation &amp; Entrepreneurship Development Club</div>
-            <div className="text-[6.8pt] text-slate-500 mt-0.2">
+            <div className="text-[6.2pt] text-slate-500 mt-0.2">
               Certified Assessment Report • Digitally signed &amp; verified
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <img
               src="/favicon.png"
               alt="Verification Crest"
-              className="size-6 object-contain filter drop-shadow-sm opacity-90 shrink-0"
+              className="size-5 object-contain filter drop-shadow-sm opacity-90 shrink-0"
             />
             <div className="text-right">
-              <div className="font-mono text-[7.5pt] font-semibold text-slate-900">
+              <div className="font-mono text-[7pt] font-semibold text-slate-900">
                 Date: {formattedDate}
               </div>
-              <div className="text-[6.8pt] text-slate-700 font-semibold uppercase tracking-wider font-mono">
+              <div className="text-[6.2pt] text-slate-700 font-semibold uppercase tracking-wider font-mono">
                 Innovation • Rigor • Excellence
               </div>
             </div>

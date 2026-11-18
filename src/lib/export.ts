@@ -21,10 +21,10 @@ export function exportRows(rows: Record<string, unknown>[], name: string, kind: 
         const val = row[key];
         const strVal = val != null ? String(val) : "";
         if (strVal.length > maxLen) {
-          maxLen = Math.min(strVal.length, 65);
+          maxLen = Math.min(strVal.length, 75);
         }
       }
-      return { wch: Math.max(maxLen + 4, 16) };
+      return { wch: Math.max(maxLen + 6, 24) };
     });
   }
 

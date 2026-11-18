@@ -165,7 +165,7 @@ function EvaluationsPage() {
       {/* Top 4 Interactive 3D Showcase Cards */}
       <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
         <StaggerItem>
-          <GlassCard3D glowColor="primary" className="group">
+          <GlassCard3D glowColor="primary" className="group min-h-[136px] justify-between p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2 pt-0.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground leading-normal">
                 Evaluated Projects
@@ -174,13 +174,13 @@ function EvaluationsPage() {
                 <Target className="size-3.5" />
               </div>
             </div>
-            <div className="my-2.5 font-mono text-2xl font-bold">{evaluatedCount} / {teams.length}</div>
+            <div className="my-2 font-mono text-2xl font-bold">{evaluatedCount} / {teams.length}</div>
             <div className="text-[11px] text-muted-foreground pb-0.5">Scored submissions</div>
           </GlassCard3D>
         </StaggerItem>
 
         <StaggerItem>
-          <GlassCard3D glowColor="amber" className="group">
+          <GlassCard3D glowColor="amber" className="group min-h-[136px] justify-between p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2 pt-0.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-amber-500 leading-normal">
                 Top Score Achieved
@@ -189,13 +189,13 @@ function EvaluationsPage() {
                 <Trophy className="size-3.5" />
               </div>
             </div>
-            <div className="my-2.5 font-mono text-2xl font-bold text-amber-500">{fmt(topScore)} <span className="text-xs text-muted-foreground font-normal">/ 100</span></div>
+            <div className="my-2 font-mono text-2xl font-bold text-amber-500">{fmt(topScore)} <span className="text-xs text-muted-foreground font-normal">/ 100</span></div>
             <div className="text-[11px] text-muted-foreground pb-0.5">Highest event mark</div>
           </GlassCard3D>
         </StaggerItem>
 
         <StaggerItem>
-          <GlassCard3D glowColor="emerald" className="group">
+          <GlassCard3D glowColor="emerald" className="group min-h-[136px] justify-between p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2 pt-0.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-500 leading-normal">
                 Finalized / Approved
@@ -204,13 +204,13 @@ function EvaluationsPage() {
                 <CheckCircle2 className="size-3.5" />
               </div>
             </div>
-            <div className="my-2.5 font-mono text-2xl font-bold text-emerald-500">{moderatedCount}</div>
+            <div className="my-2 font-mono text-2xl font-bold text-emerald-500">{moderatedCount}</div>
             <div className="text-[11px] text-muted-foreground pb-0.5">Official decisions locked</div>
           </GlassCard3D>
         </StaggerItem>
 
         <StaggerItem>
-          <GlassCard3D glowColor="rose" className="group">
+          <GlassCard3D glowColor="rose" className="group min-h-[136px] justify-between p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2 pt-0.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-rose-500 leading-normal">
                 Review Required
@@ -219,7 +219,7 @@ function EvaluationsPage() {
                 <AlertTriangle className="size-3.5" />
               </div>
             </div>
-            <div className="my-2.5 font-mono text-2xl font-bold text-rose-500">{flaggedCount}</div>
+            <div className="my-2 font-mono text-2xl font-bold text-rose-500">{flaggedCount}</div>
             <div className="text-[11px] text-muted-foreground pb-0.5">Integrity or score flags</div>
           </GlassCard3D>
         </StaggerItem>
