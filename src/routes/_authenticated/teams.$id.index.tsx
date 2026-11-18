@@ -27,7 +27,8 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { AnimatedProgress } from "@/components/ui/animated-progress";
 import { EvaluationProgressModal } from "@/components/evaluation-progress-modal";
 import { ScoreBreakdownModal } from "@/components/score-breakdown-modal";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, Magnetic } from "@/components/ui/motion-primitives";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { RouteLoadingView } from "@/components/ui/innovedge-loader";
 import { useTeamRows, useWeights } from "@/lib/queries";
 import { updatePersistentTeam, deletePersistentTeam, getPersistentMembers } from "@/lib/team-store";
@@ -229,32 +230,40 @@ function TeamPage() {
     <>
       <FadeIn>
         <PageHeader title={t.name} desc={t.project_title ?? undefined}>
-          <Button
-            variant="default"
-            className="bg-primary text-primary-foreground font-semibold"
-            onClick={evalAll}
-            disabled={evaluatingAll}
-          >
-            {evaluatingAll ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <Play className="size-4 mr-1.5 fill-current" />}
-            {evaluatingAll ? "Evaluating…" : "Evaluate all"}
-          </Button>
-          <Button variant="secondary" onClick={() => setShowReportCard(true)}>
-            <Printer className="size-4 mr-1.5" /> PDF report
-          </Button>
-          <Button variant="secondary" asChild>
-            <Link to="/teams/$id/edit" params={{ id }}>
-              <Pencil className="size-4 mr-1.5" /> Edit
-            </Link>
-          </Button>
-          <Button
-            variant="ghost"
-            className="text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
-            onClick={() => setShowDeleteModal(true)}
-            title="Delete team"
-          >
-            <Trash2 className="size-4 mr-1.5" />
-            <span>Delete Team</span>
-          </Button>
+          <Magnetic strength={4}>
+            <Button
+              variant={evaluatingAll ? "default" : "shimmer"}
+              className="font-semibold shadow-xs"
+              onClick={evalAll}
+              disabled={evaluatingAll}
+            >
+              {evaluatingAll ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <Play className="size-4 mr-1.5 fill-current" />}
+              {evaluatingAll ? "Evaluating…" : "Evaluate all"}
+            </Button>
+          </Magnetic>
+          <Magnetic strength={4}>
+            <Button variant="secondary" onClick={() => setShowReportCard(true)}>
+              <Printer className="size-4 mr-1.5" /> PDF report
+            </Button>
+          </Magnetic>
+          <Magnetic strength={4}>
+            <Button variant="secondary" asChild>
+              <Link to="/teams/$id/edit" params={{ id }}>
+                <Pencil className="size-4 mr-1.5" /> Edit
+              </Link>
+            </Button>
+          </Magnetic>
+          <Magnetic strength={4}>
+            <Button
+              variant="ghost"
+              className="text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+              onClick={() => setShowDeleteModal(true)}
+              title="Delete team"
+            >
+              <Trash2 className="size-4 mr-1.5" />
+              <span>Delete Team</span>
+            </Button>
+          </Magnetic>
         </PageHeader>
       </FadeIn>
 
@@ -323,79 +332,85 @@ function TeamPage() {
           </div>
         </StaggerItem>
 
-        {/* Overall Score Card */}
-        <StaggerItem className="glass rounded-2xl p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-              <span>Overall Certified Score</span>
-              <Trophy className="size-4 text-primary" />
-            </div>
-
-            <div className="mt-2 font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground flex items-baseline">
-              <AnimatedNumber value={finalScoreValue} precision={1} duration={1} />
-              <span className="text-lg font-normal text-muted-foreground ml-1.5">/ 100</span>
-            </div>
-
-            <div className="mt-3">
-              <AnimatedProgress value={scorePercent} size="sm" variant="primary" />
-            </div>
-
-            <div className="mt-3 space-y-1 text-xs text-muted-foreground font-mono">
-              <div className="flex justify-between">
-                <span className="font-sans">AI-generated:</span>
-                <span>{fmt(t.aiFinal)}</span>
+        {/* Overall Score Card with 3D Glass Elevation & Specular Glare */}
+        <StaggerItem>
+          <GlassCard3D
+            glowColor="primary"
+            showBorderBeam={t.overall === "completed" || t.overall === "approved"}
+            className="p-5 flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                <span>Overall Certified Score</span>
+                <Trophy className="size-4 text-primary" />
               </div>
-              <div className="flex justify-between">
-                <span className="font-sans">Admin-approved:</span>
-                <span>
-                  {t.approvedFinal != null
-                    ? fmt(t.approvedFinal)
-                    : `Incomplete`}
-                </span>
+
+              <div className="mt-2 font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground flex items-baseline">
+                <AnimatedNumber value={finalScoreValue} precision={1} duration={1} />
+                <span className="text-lg font-normal text-muted-foreground ml-1.5">/ 100</span>
               </div>
-              {t.final_override != null && (
-                <div className="text-violet flex justify-between font-sans">
-                  <span>Override: {fmt(t.final_override)}</span>
-                  <span className="text-[10px] truncate max-w-[120px]" title={t.override_reason ?? ""}>
-                    ({t.override_reason})
+
+              <div className="mt-3">
+                <AnimatedProgress value={scorePercent} size="sm" variant="primary" />
+              </div>
+
+              <div className="mt-3 space-y-1 text-xs text-muted-foreground font-mono">
+                <div className="flex justify-between">
+                  <span className="font-sans">AI-generated:</span>
+                  <span>{fmt(t.aiFinal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-sans">Admin-approved:</span>
+                  <span>
+                    {t.approvedFinal != null
+                      ? fmt(t.approvedFinal)
+                      : `Incomplete`}
                   </span>
                 </div>
-              )}
-              <div className="pt-1 text-[11px] text-muted-foreground/80 font-sans border-t border-border/40">
-                Weights: PDF {weights.data?.pdf}% · GitHub {weights.data?.github}% · Website {weights.data?.website}%
+                {t.final_override != null && (
+                  <div className="text-violet flex justify-between font-sans">
+                    <span>Override: {fmt(t.final_override)}</span>
+                    <span className="text-[10px] truncate max-w-[120px]" title={t.override_reason ?? ""}>
+                      ({t.override_reason})
+                    </span>
+                  </div>
+                )}
+                <div className="pt-1 text-[11px] text-muted-foreground/80 font-sans border-t border-border/40">
+                  Weights: PDF {weights.data?.pdf}% · GitHub {weights.data?.github}% · Website {weights.data?.website}%
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="pt-4 border-t border-border/40 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Status:</span>
-              <StatusBadge status={t.final_status} />
-            </div>
+            <div className="pt-4 border-t border-border/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Status:</span>
+                <StatusBadge status={t.final_status} />
+              </div>
 
-            <div className="no-print flex gap-2">
-              <Button
-                size="sm"
-                className="flex-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => setFinal("approved")}
-              >
-                Approve
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="flex-1 text-xs"
-                onClick={() => setFinal("rejected")}
-              >
-                Reject
-              </Button>
-              {t.final_status !== "pending" && (
-                <Button size="sm" variant="ghost" className="text-xs" onClick={() => setFinal("pending")}>
-                  Reset
+              <div className="no-print flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => setFinal("approved")}
+                >
+                  Approve
                 </Button>
-              )}
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="flex-1 text-xs"
+                  onClick={() => setFinal("rejected")}
+                >
+                  Reject
+                </Button>
+                {t.final_status !== "pending" && (
+                  <Button size="sm" variant="ghost" className="text-xs" onClick={() => setFinal("pending")}>
+                    Reset
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          </GlassCard3D>
         </StaggerItem>
       </StaggerContainer>
 

@@ -174,7 +174,9 @@ function EvaluationsPage() {
                 <Target className="size-3.5" />
               </div>
             </div>
-            <div className="my-2 font-mono text-2xl font-bold">{evaluatedCount} / {teams.length}</div>
+            <div className="my-2 font-mono text-2xl font-bold">
+              <AnimatedNumber value={evaluatedCount} precision={0} /> / {teams.length}
+            </div>
             <div className="text-[11px] text-muted-foreground pb-0.5">Scored submissions</div>
           </GlassCard3D>
         </StaggerItem>
@@ -189,7 +191,10 @@ function EvaluationsPage() {
                 <Trophy className="size-3.5" />
               </div>
             </div>
-            <div className="my-2 font-mono text-2xl font-bold text-amber-500">{fmt(topScore)} <span className="text-xs text-muted-foreground font-normal">/ 100</span></div>
+            <div className="my-2 font-mono text-2xl font-bold text-amber-500">
+              <AnimatedNumber value={topScore} precision={1} />{" "}
+              <span className="text-xs text-muted-foreground font-normal">/ 100</span>
+            </div>
             <div className="text-[11px] text-muted-foreground pb-0.5">Highest event mark</div>
           </GlassCard3D>
         </StaggerItem>
@@ -204,7 +209,9 @@ function EvaluationsPage() {
                 <CheckCircle2 className="size-3.5" />
               </div>
             </div>
-            <div className="my-2 font-mono text-2xl font-bold text-emerald-500">{moderatedCount}</div>
+            <div className="my-2 font-mono text-2xl font-bold text-emerald-500">
+              <AnimatedNumber value={moderatedCount} precision={0} />
+            </div>
             <div className="text-[11px] text-muted-foreground pb-0.5">Official decisions locked</div>
           </GlassCard3D>
         </StaggerItem>
@@ -219,7 +226,9 @@ function EvaluationsPage() {
                 <AlertTriangle className="size-3.5" />
               </div>
             </div>
-            <div className="my-2 font-mono text-2xl font-bold text-rose-500">{flaggedCount}</div>
+            <div className="my-2 font-mono text-2xl font-bold text-rose-500">
+              <AnimatedNumber value={flaggedCount} precision={0} />
+            </div>
             <div className="text-[11px] text-muted-foreground pb-0.5">Integrity or score flags</div>
           </GlassCard3D>
         </StaggerItem>
@@ -480,14 +489,10 @@ function EvaluationsPage() {
                     <div className="flex items-center justify-center gap-1.5 flex-wrap">
                       <Button
                         size="sm"
-                        variant={t.overall === "completed" || t.overall === "approved" ? "outline" : "default"}
+                        variant={evaluatingIds.has(t.id) ? "default" : t.overall === "completed" || t.overall === "approved" ? "outline" : "shimmer"}
                         disabled={evaluatingIds.has(t.id)}
                         onClick={() => handleEvaluate(t)}
-                        className={`text-xs h-7 px-2 font-semibold ${
-                          t.overall !== "completed" && t.overall !== "approved"
-                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                            : ""
-                        }`}
+                        className="text-xs h-7 px-2 font-semibold shadow-xs"
                         title="Run multi-modal evaluation"
                       >
                         {evaluatingIds.has(t.id) ? (

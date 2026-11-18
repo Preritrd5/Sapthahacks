@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { useWeights, type TeamRow } from "@/lib/queries";
 import { COMPONENTS, COMPONENT_LABEL } from "@/lib/scoring";
 import { fmt } from "@/components/page-header";
@@ -498,7 +499,7 @@ function ScorecardDocument({
                     {ev?.ai_score != null ? fmt(ev.ai_score) : "—"}
                   </td>
                   <td className="p-3 text-right font-mono font-bold text-sm text-foreground">
-                    {ev?.final_score != null ? fmt(ev.final_score) : "—"}
+                    <AnimatedNumber value={ev?.final_score} precision={1} fallback="—" />
                   </td>
                   <td className="p-3 text-center">
                     <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
@@ -539,7 +540,7 @@ function ScorecardDocument({
 
           <div className="my-2 flex items-baseline gap-2">
             <span className="font-display text-4xl font-black text-foreground tracking-tight">
-              {scoreDisplayValue != null ? fmt(scoreDisplayValue) : "—"}
+              <AnimatedNumber value={scoreDisplayValue} precision={1} duration={1.1} fallback="—" />
             </span>
             <span className="text-sm font-semibold text-muted-foreground font-mono">/ 100.0</span>
           </div>

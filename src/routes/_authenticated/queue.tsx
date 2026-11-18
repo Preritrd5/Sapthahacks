@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { AnimatedProgress } from "@/components/ui/animated-progress";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { FadeIn, StaggerContainer, StaggerItem, PulsingScanner } from "@/components/ui/motion-primitives";
+import { InnovedgeLoader } from "@/components/ui/innovedge-loader";
+import { FadeIn, StaggerContainer, StaggerItem, PulsingScanner, Magnetic, BorderBeam, MagicCard, NumberTicker, ShimmerButton } from "@/components/ui/motion-primitives";
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { FileText, Github, Globe, Award } from "lucide-react";
 import { useQueueRunner } from "@/lib/queue-runner";
@@ -163,27 +164,33 @@ function Queue() {
           desc={`Paced at ${settings.data?.rpm ?? 15} requests/min, ${settings.data?.concurrency ?? 2} concurrent workers.`}
         >
           {runner.running || isEvaluating ? (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                runner.pause();
-                setIsEvaluating(false);
-              }}
-            >
-              <Pause className="size-4 mr-1.5" /> Pause
-            </Button>
+            <Magnetic strength={4}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  runner.pause();
+                  setIsEvaluating(false);
+                }}
+              >
+                <Pause className="size-4 mr-1.5" /> Pause
+              </Button>
+            </Magnetic>
           ) : (
-            <Button
-              onClick={() => startFor(COMPONENTS)}
-              disabled={isEvaluating}
-              className="bg-primary text-primary-foreground font-semibold"
-            >
-              <Play className="size-4 mr-1.5 fill-current" /> Run Queue Now
-            </Button>
+            <Magnetic strength={4}>
+              <Button
+                onClick={() => startFor(COMPONENTS)}
+                disabled={isEvaluating}
+                className="bg-primary text-primary-foreground font-semibold"
+              >
+                <Play className="size-4 mr-1.5 fill-current" /> Run Queue Now
+              </Button>
+            </Magnetic>
           )}
-          <Button variant="secondary" onClick={retryFailed} disabled={!count("failed")}>
-            <RotateCw className="size-4 mr-1.5" /> Retry Failed
-          </Button>
+          <Magnetic strength={4}>
+            <Button variant="secondary" onClick={retryFailed} disabled={!count("failed")}>
+              <RotateCw className="size-4 mr-1.5" /> Retry Failed
+            </Button>
+          </Magnetic>
           <Button variant="ghost" onClick={cancelPending} disabled={!count("queued")}>
             <XCircle className="size-4 mr-1.5" /> Cancel Pending
           </Button>
@@ -193,8 +200,10 @@ function Queue() {
       {/* Top 4 Realtime Queue Stat Cards */}
       <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
         <StaggerItem>
-          <GlassCard3D
-            glowColor="rgba(217, 90, 43, 0.2)"
+          <MagicCard
+            gradientColor="rgba(245, 158, 11, 0.2)"
+            gradientFrom="rgba(245, 158, 11, 0.35)"
+            gradientTo="rgba(217, 119, 6, 0.15)"
             className="p-4 border-border/80 group"
           >
             <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
@@ -202,15 +211,17 @@ function Queue() {
               <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
             </div>
             <div className="mt-1 font-mono text-2xl font-bold text-amber-500">
-              <AnimatedNumber value={count("queued")} precision={0} />
+              <NumberTicker value={count("queued")} decimalPlaces={0} />
             </div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Awaiting worker pickup</div>
-          </GlassCard3D>
+          </MagicCard>
         </StaggerItem>
 
         <StaggerItem>
-          <GlassCard3D
-            glowColor="rgba(56, 189, 248, 0.22)"
+          <MagicCard
+            gradientColor="rgba(56, 189, 248, 0.22)"
+            gradientFrom="rgba(56, 189, 248, 0.4)"
+            gradientTo="rgba(14, 165, 233, 0.15)"
             className="p-4 border-sky-500/25 bg-sky-500/5 group"
           >
             <div className="text-[11px] font-semibold uppercase text-sky-500 flex items-center justify-between">
@@ -218,15 +229,17 @@ function Queue() {
               <Loader2 className={`size-3.5 text-sky-500 ${runner.running || isEvaluating ? "animate-spin" : ""}`} />
             </div>
             <div className="mt-1 font-mono text-2xl font-bold text-sky-500">
-              <AnimatedNumber value={count("processing")} precision={0} />
+              <NumberTicker value={count("processing")} decimalPlaces={0} />
             </div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Active parallel workers</div>
-          </GlassCard3D>
+          </MagicCard>
         </StaggerItem>
 
         <StaggerItem>
-          <GlassCard3D
-            glowColor="rgba(16, 185, 129, 0.22)"
+          <MagicCard
+            gradientColor="rgba(16, 185, 129, 0.22)"
+            gradientFrom="rgba(16, 185, 129, 0.4)"
+            gradientTo="rgba(5, 150, 105, 0.15)"
             className="p-4 border-emerald-500/25 bg-emerald-500/5 group"
           >
             <div className="text-[11px] font-semibold uppercase text-emerald-500 flex items-center justify-between">
@@ -234,15 +247,17 @@ function Queue() {
               <CheckCircle2 className="size-3.5 text-emerald-500" />
             </div>
             <div className="mt-1 font-mono text-2xl font-bold text-emerald-500">
-              <AnimatedNumber value={count("done")} precision={0} />
+              <NumberTicker value={count("done")} decimalPlaces={0} />
             </div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Evaluated & saved</div>
-          </GlassCard3D>
+          </MagicCard>
         </StaggerItem>
 
         <StaggerItem>
-          <GlassCard3D
-            glowColor="rgba(244, 63, 94, 0.22)"
+          <MagicCard
+            gradientColor="rgba(244, 63, 94, 0.22)"
+            gradientFrom="rgba(244, 63, 94, 0.4)"
+            gradientTo="rgba(225, 29, 72, 0.15)"
             className="p-4 border-rose-500/25 bg-rose-500/5 group"
           >
             <div className="text-[11px] font-semibold uppercase text-rose-500 flex items-center justify-between">
@@ -250,10 +265,10 @@ function Queue() {
               <XCircle className="size-3.5 text-rose-500" />
             </div>
             <div className="mt-1 font-mono text-2xl font-bold text-rose-500">
-              <AnimatedNumber value={count("failed")} precision={0} />
+              <NumberTicker value={count("failed")} decimalPlaces={0} />
             </div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Automated fallback available</div>
-          </GlassCard3D>
+          </MagicCard>
         </StaggerItem>
       </StaggerContainer>
 
@@ -322,7 +337,8 @@ function Queue() {
 
       {/* Live Direct Evaluation Banner */}
       {isEvaluating && (
-        <FadeIn className="mb-4 rounded-2xl border border-primary/30 bg-primary/10 p-5 shadow-lg backdrop-blur-md space-y-3">
+        <FadeIn className="relative overflow-hidden mb-4 rounded-2xl border border-primary/30 bg-primary/10 p-5 shadow-lg backdrop-blur-md space-y-3">
+          <BorderBeam colorFrom="#d95a2b" colorTo="#f59e0b" duration={4} borderWidth={1.5} borderRadius={16} />
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 font-semibold text-primary">
               <Loader2 className="size-4 animate-spin" />
@@ -379,23 +395,26 @@ function Queue() {
               {COMPONENT_LABEL[c]} only
             </Button>
           ))}
-          <Button
-            onClick={handleRunEvaluation}
-            disabled={isEvaluating}
-            className="ml-auto bg-gradient-to-r from-terracotta to-amber-600 text-white font-bold shadow-md hover:opacity-95"
-          >
-            {isEvaluating ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <Play className="size-4 mr-1.5 fill-current" />}
-            {isEvaluating
-              ? "Evaluating..."
-              : `Run Evaluation (${selectedTarget === "all" ? "All Components" : COMPONENT_LABEL[selectedTarget]})`}
-          </Button>
+          <Magnetic strength={4}>
+            <Button
+              onClick={handleRunEvaluation}
+              disabled={isEvaluating}
+              variant={isEvaluating ? "default" : "shimmer"}
+              className="ml-auto font-bold shadow-md hover:opacity-95"
+            >
+              {isEvaluating ? <InnovedgeLoader size="xs" /> : <Play className="size-4 mr-1.5 fill-current" />}
+              {isEvaluating
+                ? "Evaluating..."
+                : `Run Evaluation (${selectedTarget === "all" ? "All Components" : COMPONENT_LABEL[selectedTarget]})`}
+            </Button>
+          </Magnetic>
         </div>
       </div>
 
       <div className="glass mb-4 rounded-2xl p-5 space-y-3">
         <div className="flex items-center justify-between text-sm">
           <span className="flex items-center gap-2 font-medium">
-            {(runner.running || isEvaluating) && <Loader2 className="size-4 animate-spin text-primary" />}
+            {(runner.running || isEvaluating) && <InnovedgeLoader size="xs" />}
             {isEvaluating
               ? `Evaluating ${evalProgress.teamName}...`
               : runner.running
@@ -403,7 +422,17 @@ function Queue() {
               : "Idle"}
           </span>
           <span className="font-mono text-xs font-semibold">
-            <AnimatedNumber value={finished} precision={0} /> / <AnimatedNumber value={total} precision={0} /> Completed
+            {isEvaluating && evalProgress.total ? (
+              <>
+                <AnimatedNumber value={evalProgress.current} precision={0} /> /{" "}
+                <AnimatedNumber value={evalProgress.total} precision={0} /> Teams Completed
+              </>
+            ) : (
+              <>
+                <AnimatedNumber value={finished} precision={0} /> /{" "}
+                <AnimatedNumber value={total} precision={0} /> Completed
+              </>
+            )}
           </span>
         </div>
 

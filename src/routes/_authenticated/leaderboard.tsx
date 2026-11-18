@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, BorderBeam, Magnetic, NumberTicker } from "@/components/ui/motion-primitives";
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
@@ -92,12 +92,16 @@ function Board() {
           title="Official Leaderboard"
           desc="Official competitive ranking of approved evaluations. Pending entries are clearly indicated."
         >
-          <Button variant="secondary" onClick={() => exportRows(flat(), "leaderboard", "csv")}>
-            <Download className="size-4 mr-1.5" /> CSV
-          </Button>
-          <Button variant="secondary" onClick={() => exportRows(flat(), "leaderboard", "xlsx")}>
-            <Download className="size-4 mr-1.5" /> Excel
-          </Button>
+          <Magnetic strength={4}>
+            <Button variant="secondary" onClick={() => exportRows(flat(), "leaderboard", "csv")}>
+              <Download className="size-4 mr-1.5" /> CSV
+            </Button>
+          </Magnetic>
+          <Magnetic strength={4}>
+            <Button variant="secondary" onClick={() => exportRows(flat(), "leaderboard", "xlsx")}>
+              <Download className="size-4 mr-1.5" /> Excel
+            </Button>
+          </Magnetic>
         </PageHeader>
       </FadeIn>
 
@@ -110,8 +114,9 @@ function Board() {
               <div className="order-2 md:order-1">
                 <GlassCard3D
                   glowColor="rgba(148, 163, 184, 0.25)"
-                  className="p-4 rounded-2xl border-slate-400/30 bg-slate-500/5 text-center relative overflow-hidden group"
+                  className="p-4 rounded-2xl border-slate-400/30 bg-slate-500/5 text-center relative overflow-hidden group shadow-md"
                 >
+                  <BorderBeam colorFrom="#94a3b8" colorTo="#64748b" duration={8} borderWidth={1.2} borderRadius={16} />
                   <div className="size-9 mx-auto mb-2 rounded-full bg-slate-400/20 text-slate-300 grid place-items-center font-bold text-sm border border-slate-400/40">
                     #2
                   </div>
@@ -122,7 +127,7 @@ function Board() {
                     {topThree[1].t.project_title || "Innovation Proposal"}
                   </p>
                   <div className="mt-2 font-mono text-2xl font-black text-slate-300">
-                    <AnimatedNumber value={topThree[1].score} precision={1} />
+                    <NumberTicker value={topThree[1].score} decimalPlaces={1} />
                     <span className="text-xs font-normal text-muted-foreground font-sans"> / 100</span>
                   </div>
                   <div className="mt-1">
@@ -140,6 +145,7 @@ function Board() {
                   intensity={15}
                   className="p-5 rounded-2xl border-amber-500/50 bg-amber-500/10 text-center relative overflow-hidden shadow-lg shadow-amber-500/10 group"
                 >
+                  <BorderBeam colorFrom="#f59e0b" colorTo="#d97706" duration={7} borderWidth={1.5} borderRadius={16} />
                   <div className="absolute top-2 right-2">
                     <Sparkles className="size-4 text-amber-500 animate-pulse" />
                   </div>
@@ -156,7 +162,7 @@ function Board() {
                     {topThree[0].t.project_title || "Grand Jury Winner"}
                   </p>
                   <div className="mt-2 font-mono text-3xl font-black text-amber-500">
-                    <AnimatedNumber value={topThree[0].score} precision={1} />
+                    <NumberTicker value={topThree[0].score} decimalPlaces={1} />
                     <span className="text-xs font-normal text-muted-foreground font-sans"> / 100</span>
                   </div>
                   <div className="mt-1">
@@ -171,8 +177,9 @@ function Board() {
               <div className="order-3">
                 <GlassCard3D
                   glowColor="rgba(217, 119, 6, 0.25)"
-                  className="p-4 rounded-2xl border-amber-700/30 bg-amber-700/5 text-center relative overflow-hidden group"
+                  className="p-4 rounded-2xl border-amber-700/30 bg-amber-700/5 text-center relative overflow-hidden group shadow-md"
                 >
+                  <BorderBeam colorFrom="#d97706" colorTo="#b45309" duration={10} borderWidth={1.2} borderRadius={16} />
                   <div className="size-9 mx-auto mb-2 rounded-full bg-amber-700/20 text-amber-600 dark:text-amber-400 grid place-items-center font-bold text-sm border border-amber-700/40">
                     #3
                   </div>
@@ -180,10 +187,10 @@ function Board() {
                     {topThree[2].t.name}
                   </h3>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {topThree[2].t.project_title || "Innovation Proposal"}
+                    {topThree[2].t.project_title || "Innovation Entry"}
                   </p>
                   <div className="mt-2 font-mono text-2xl font-black text-amber-600 dark:text-amber-400">
-                    <AnimatedNumber value={topThree[2].score} precision={1} />
+                    <NumberTicker value={topThree[2].score} decimalPlaces={1} />
                     <span className="text-xs font-normal text-muted-foreground font-sans"> / 100</span>
                   </div>
                   <div className="mt-1">

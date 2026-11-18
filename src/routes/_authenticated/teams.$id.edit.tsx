@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/page-header";
 import { TeamForm } from "@/components/team-form";
+import { FadeIn } from "@/components/ui/motion-primitives";
 import { getPersistentTeams, getPersistentMembers } from "@/lib/team-store";
 
 export const Route = createFileRoute("/_authenticated/teams/$id/edit")({
@@ -38,9 +39,9 @@ function Edit() {
   if (q.isLoading) return <div className="glass h-96 animate-pulse rounded-2xl" />;
   if (!q.data) return <div className="p-8 text-center text-muted-foreground">Team not found</div>;
   return (
-    <>
+    <FadeIn>
       <PageHeader title={`Edit ${q.data.team.name}`} />
       <TeamForm team={q.data.team} members={q.data.members} />
-    </>
+    </FadeIn>
   );
 }

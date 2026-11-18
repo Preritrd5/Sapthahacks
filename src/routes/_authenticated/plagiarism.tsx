@@ -30,7 +30,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { FadeIn, StaggerContainer, StaggerItem, PulsingScanner } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, PulsingScanner, Magnetic } from "@/components/ui/motion-primitives";
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { StatCardSkeleton, CardGridSkeleton } from "@/components/ui/skeleton";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
@@ -189,10 +189,12 @@ function PlagiarismPage() {
           title="Plagiarism Detection Module"
           desc="Dedicated cross-team similarity scanning across PDF documents, GitHub code, and deployed websites."
         >
-          <Button onClick={handleRescan} disabled={scanning} size="sm">
-            <RotateCw className={`size-4 mr-1.5 ${scanning ? "animate-spin" : ""}`} />
-            {scanning ? "Scanning…" : "Re-scan Submissions"}
-          </Button>
+          <Magnetic strength={4}>
+            <Button onClick={handleRescan} disabled={scanning} size="sm">
+              <RotateCw className={`size-4 mr-1.5 ${scanning ? "animate-spin" : ""}`} />
+              {scanning ? "Scanning…" : "Re-scan Submissions"}
+            </Button>
+          </Magnetic>
         </PageHeader>
       </FadeIn>
 

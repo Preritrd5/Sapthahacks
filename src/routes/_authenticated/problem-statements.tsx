@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, Magnetic } from "@/components/ui/motion-primitives";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { useTeamRows } from "@/lib/queries";
 import {
@@ -182,10 +183,12 @@ function ProblemStatementsPage() {
           title="Problem Statements"
           desc={`${problemStatements.length} problem statement(s) defined. Teams select their project challenge from this section.`}
         >
-          <Button onClick={openCreateDialog} className="transition-all hover:scale-105 shadow-xs">
-            <Plus className="size-4 mr-1.5" />
-            Add Problem Statement
-          </Button>
+          <Magnetic strength={4}>
+            <Button onClick={openCreateDialog} className="shadow-xs">
+              <Plus className="size-4 mr-1.5" />
+              Add Problem Statement
+            </Button>
+          </Magnetic>
         </PageHeader>
       </FadeIn>
 
@@ -222,10 +225,12 @@ function ProblemStatementsPage() {
           title="No problem statements found"
           desc="Add new problem statements for your hackathon evaluation."
         >
-          <Button onClick={openCreateDialog} className="transition-all hover:scale-105 shadow-xs">
-            <Plus className="size-4 mr-1.5" />
-            Add Problem Statement
-          </Button>
+          <Magnetic strength={4}>
+            <Button onClick={openCreateDialog} className="shadow-xs">
+              <Plus className="size-4 mr-1.5" />
+              Add Problem Statement
+            </Button>
+          </Magnetic>
         </Empty>
       ) : (
         <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -273,7 +278,7 @@ function ProblemStatementsPage() {
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Users className="size-3.5 text-primary" />
                       <span className="font-medium">
-                        {count === 1 ? "1 team enrolled" : `${count} teams enrolled`}
+                        <AnimatedNumber value={count} precision={0} /> {count === 1 ? "team enrolled" : "teams enrolled"}
                       </span>
                     </div>
 

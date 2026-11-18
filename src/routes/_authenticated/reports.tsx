@@ -31,12 +31,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, Magnetic } from "@/components/ui/motion-primitives";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { useTeamRows, type TeamRow } from "@/lib/queries";
 import { exportRows, downloadBlob } from "@/lib/export";
 import { COMPONENTS, COMPONENT_LABEL } from "@/lib/scoring";
 import { runComprehensivePlagiarismScan } from "@/lib/plagiarism";
 import { TeamReportCard } from "@/components/team-report-card";
+import { QualifiedTeamsReport } from "@/components/qualified-teams-report";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({
@@ -60,6 +62,8 @@ function ReportsPage() {
   const [cutoffScore, setCutoffScore] = useState<number>(65);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedReportTeam, setSelectedReportTeam] = useState<TeamRow | null>(null);
+  const [showQualifiedPdfModal, setShowQualifiedPdfModal] = useState(false);
+  const [isPrintingQualified, setIsPrintingQualified] = useState(false);
 
   // Plagiarism map for complete report
   const plagiarismMap = useMemo(() => runComprehensivePlagiarismScan(teams), [teams]);
@@ -82,6 +86,100 @@ function ReportsPage() {
         rank: idx + 1,
       }));
   }, [rankedAll]);
+
+  // Qualify Top N Teams by Competitive Ranking (e.g. Top 10, Top 5)
+  const handleQualifyTopN = async (count: number) => {
+    if (count <= 0) return;
+    const targetTeams = rankedAll.slice(0, count);
+    if (!targetTeams.length) {
+      return toast.info("No teams available to qualify.");
+    }
+    const minScore = (targetTeams[targetTeams.length - 1]?.officialFinal ?? targetTeams[targetTeams.length - 1]?.aiFinal ?? 0).toFixed(1);
+    const maxScore = (targetTeams[0]?.officialFinal ?? targetTeams[0]?.aiFinal ?? 0).toFixed(1);
+
+    if (
+      !confirm(
+        `Move the Top ${targetTeams.length} highest-scoring teams into QUALIFIED status for Round 2?\n\n` +
+        `• Highest Score: ${maxScore} / 100\n` +
+        `• Cutoff Mark: ${minScore} / 100\n` +
+        `• Teams to qualify: ${targetTeams.length}\n\n` +
+        `Confirm Round 2 Finalist Shortlist?`
+      )
+    ) {
+      return;
+    }
+
+    targetTeams.forEach((t) => {
+      updatePersistentTeam(t.id, {
+        final_status: "approved",
+        updated_at: new Date().toISOString(),
+      });
+    });
+
+    try {
+      await supabase
+        .from("teams")
+        .update({ final_status: "approved", updated_at: new Date().toISOString() })
+        .in(
+          "id",
+          targetTeams.map((t) => t.id)
+        );
+      await logActivity(
+        "Qualified Top N Teams",
+        `Top ${targetTeams.length} teams qualified by competitive rank (cut-off: ${minScore}/100)`
+      );
+    } catch (err) {
+      console.warn("Could not sync to Supabase:", err);
+    }
+
+    qc.invalidateQueries({ queryKey: ["team-rows"] });
+    toast.success(`✓ Successfully qualified Top ${targetTeams.length} teams for Round 2!`);
+  };
+
+  // Reset all qualification ticks back to Pending
+  const handleResetAllQualifications = async () => {
+    if (!qualifiedTeams.length) {
+      return toast.info("No teams are currently marked as qualified.");
+    }
+
+    if (!confirm(`Reset qualification status for all ${qualifiedTeams.length} qualified team(s) back to Pending?`)) {
+      return;
+    }
+
+    qualifiedTeams.forEach((t) => {
+      updatePersistentTeam(t.id, { final_status: "pending", updated_at: new Date().toISOString() });
+    });
+
+    try {
+      await supabase
+        .from("teams")
+        .update({ final_status: "pending", updated_at: new Date().toISOString() })
+        .in(
+          "id",
+          qualifiedTeams.map((t) => t.id)
+        );
+      await logActivity("Reset qualifications", `${qualifiedTeams.length} teams reset to pending`);
+    } catch (err) {}
+
+    qc.invalidateQueries({ queryKey: ["team-rows"] });
+    toast.info(`Qualification reset to Pending for ${qualifiedTeams.length} team(s).`);
+  };
+
+  // Direct Fast Form-Wise PDF Print (Clean pure A4 document, no sliders or website layout)
+  const handleDirectPrintPdf = () => {
+    if (!qualifiedTeams.length) {
+      return toast.warning("No teams are currently qualified. Select or qualify teams first (e.g. click 'Top 10').");
+    }
+    setIsPrintingQualified(true);
+    document.body.classList.add("printing-qualified-list");
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        setIsPrintingQualified(false);
+        document.body.classList.remove("printing-qualified-list");
+      }, 500);
+    }, 100);
+  };
 
   // Auto-Qualify Teams meeting cutoff
   const handleAutoQualifyCutoff = async () => {
@@ -262,7 +360,7 @@ function ReportsPage() {
               </div>
             </div>
             <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
-              {qualifiedTeams.length}
+              <AnimatedNumber value={qualifiedTeams.length} precision={0} />
             </div>
             <div className="text-xs text-muted-foreground pb-0.5">
               Cutoff: <span className="font-semibold text-foreground">{cutoffScore}/100</span> marks
@@ -281,7 +379,7 @@ function ReportsPage() {
               </div>
             </div>
             <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
-              {evaluatedCount}
+              <AnimatedNumber value={evaluatedCount} precision={0} />
             </div>
             <div className="text-xs text-muted-foreground pb-0.5">
               Across <span className="font-semibold text-foreground">{teams.length}</span> registered teams
@@ -300,7 +398,8 @@ function ReportsPage() {
               </div>
             </div>
             <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
-              {avgScore} <span className="text-base text-muted-foreground font-normal">/ 100</span>
+              <AnimatedNumber value={avgScore} precision={1} />{" "}
+              <span className="text-base text-muted-foreground font-normal">/ 100</span>
             </div>
             <div className="text-xs text-muted-foreground pb-0.5">
               Mean aggregate performance
@@ -319,7 +418,7 @@ function ReportsPage() {
               </div>
             </div>
             <div className="my-2 font-mono text-3xl font-extrabold text-foreground">
-              {cleanIntegrityCount}
+              <AnimatedNumber value={cleanIntegrityCount} precision={0} />
             </div>
             <div className="text-xs text-muted-foreground pb-0.5">
               Verified &lt; 35% similarity threshold
@@ -370,6 +469,58 @@ function ReportsPage() {
                 <Sparkles className="size-3.5 text-amber-500" /> Auto-Qualify (&ge;{cutoffScore})
               </Button>
 
+              {/* Quick Select Top N Shortlist */}
+              <div className="flex items-center gap-1.5 border-l border-border/60 pl-3">
+                <span className="text-xs font-semibold text-muted-foreground">Select:</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQualifyTopN(5)}
+                  className="text-xs h-7 px-2 font-mono font-bold text-primary hover:bg-primary/10"
+                  title="Qualify Top 5 teams by score"
+                >
+                  Top 5
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQualifyTopN(10)}
+                  className="text-xs h-7 px-2 font-mono font-bold bg-amber-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500/20"
+                  title="Qualify Top 10 teams by score"
+                >
+                  Top 10
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQualifyTopN(15)}
+                  className="text-xs h-7 px-2 font-mono font-bold text-primary hover:bg-primary/10"
+                  title="Qualify Top 15 teams by score"
+                >
+                  Top 15
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQualifyTopN(20)}
+                  className="text-xs h-7 px-2 font-mono font-bold text-primary hover:bg-primary/10"
+                  title="Qualify Top 20 teams by score"
+                >
+                  Top 20
+                </Button>
+                {qualifiedTeams.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleResetAllQualifications}
+                    className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                    title="Reset all qualifications to Pending"
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+
               <div className="relative w-56">
                 <Search className="absolute left-2.5 top-2 size-3.5 text-muted-foreground" />
                 <Input
@@ -389,8 +540,25 @@ function ReportsPage() {
               <Button size="sm" variant="outline" onClick={() => exportQualified("xlsx")} className="text-xs h-8">
                 <FileSpreadsheet className="size-3.5 mr-1" /> Export Excel
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => window.print()} className="text-xs h-8">
-                <Printer className="size-3.5 mr-1" /> Print Report
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleDirectPrintPdf}
+                disabled={!qualifiedTeams.length}
+                className="text-xs h-8 bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-xs"
+                title="Print certified A4 form-wise PDF without website sliders or background"
+              >
+                <Printer className="size-3.5 mr-1" /> Print Official Form PDF
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowQualifiedPdfModal(true)}
+                disabled={!qualifiedTeams.length}
+                className="text-xs h-8 border-border/80"
+                title="Preview official qualified list document"
+              >
+                <FileText className="size-3.5 mr-1" /> Preview Form
               </Button>
             </div>
           </div>
@@ -627,6 +795,16 @@ function ReportsPage() {
         onClose={() => setSelectedReportTeam(null)}
         plagiarismScore={selectedReportTeam ? plagiarismMap.get(selectedReportTeam.id)?.overallSimilarity : undefined}
         plagiarismResult={selectedReportTeam ? plagiarismMap.get(selectedReportTeam.id) : undefined}
+      />
+
+      {/* Official Qualified Teams Form-Wise PDF Report Modal & Print Portal */}
+      <QualifiedTeamsReport
+        teams={qualifiedTeams}
+        isOpen={showQualifiedPdfModal}
+        onClose={() => setShowQualifiedPdfModal(false)}
+        totalRegisteredCount={teams.length}
+        plagiarismMap={plagiarismMap}
+        selectionTitle={`Official Round 2 Finalists (${qualifiedTeams.length} Teams)`}
       />
     </>
   );

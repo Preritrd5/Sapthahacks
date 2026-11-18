@@ -32,4 +32,17 @@ describe("Animated Number & Scoring Formatting", () => {
     const weighted = Number((pdf * 0.3 + github * 0.4 + website * 0.3).toFixed(1));
     expect(weighted).toBe(85.5);
   });
+
+  it("verifies component exports from motion-primitives", async () => {
+    const primitives = await import("./motion-primitives");
+    expect(primitives.MagicCard).toBeDefined();
+    expect(primitives.NumberTicker).toBeDefined();
+    expect(primitives.OrbitingCircles).toBeDefined();
+    expect(primitives.ShimmerButton).toBeDefined();
+    expect(primitives.BlurFade).toBeDefined();
+    expect(primitives.SpotlightCard).toBeDefined();
+    expect(primitives.StarBorder).toBeDefined();
+    expect(primitives.MovingBorder).toBeDefined();
+    expect(primitives.MultiStepLoader).toBeDefined();
+  });
 });

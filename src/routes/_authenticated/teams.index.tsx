@@ -18,6 +18,7 @@ import { evaluateSingleTeam } from "@/lib/evaluation-engine";
 import { TeamReportCard } from "@/components/team-report-card";
 import { TeamSubmissionModal } from "@/components/team-submission-modal";
 import { runComprehensivePlagiarismScan } from "@/lib/plagiarism";
+import { FadeIn, Magnetic, StarBorder } from "@/components/ui/motion-primitives";
 
 export const Route = createFileRoute("/_authenticated/teams/")({
   head: () => ({
@@ -80,16 +81,22 @@ function Teams() {
 
   return (
     <>
-      <PageHeader title="Registered Teams" desc={`${rows.data?.length ?? 0} teams registered`}>
-        <Button asChild variant="secondary">
-          <Link to="/import">Bulk import</Link>
-        </Button>
-        <Button asChild>
-          <Link to="/teams/new">
-            <Plus className="size-4 mr-1.5" /> Add team
-          </Link>
-        </Button>
-      </PageHeader>
+      <FadeIn>
+        <PageHeader title="Registered Teams" desc={`${rows.data?.length ?? 0} teams registered`}>
+          <Magnetic strength={4}>
+            <Button asChild variant="secondary">
+              <Link to="/import">Bulk import</Link>
+            </Button>
+          </Magnetic>
+          <Magnetic strength={4}>
+            <StarBorder as="div" className="cursor-pointer">
+              <Link to="/teams/new" className="inline-flex items-center text-primary font-semibold">
+                <Plus className="size-4 mr-1.5" /> Add team
+              </Link>
+            </StarBorder>
+          </Magnetic>
+        </PageHeader>
+      </FadeIn>
 
       <div className="mb-4 flex flex-col sm:flex-row flex-wrap gap-2">
         <div className="relative min-w-0 sm:min-w-60 flex-1">
@@ -242,10 +249,10 @@ function Teams() {
                         {/* Independent Evaluate button */}
                         <Button
                           size="sm"
-                          variant={isCompleted ? "outline" : "default"}
+                          variant={isEvaluating ? "default" : isCompleted ? "outline" : "shimmer"}
                           disabled={isEvaluating}
                           onClick={() => handleSingleEvaluate(t, isCompleted)}
-                          className="h-7 px-2 text-xs"
+                          className="h-7 px-2 text-xs font-semibold shadow-xs"
                         >
                           {isEvaluating ? (
                             <>

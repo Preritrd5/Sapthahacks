@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +64,7 @@ interface StaggerContainerProps {
 export function StaggerContainer({
   children,
   className,
-  staggerDelay = 0.06,
+  staggerDelay = 0.05,
   delayChildren = 0,
 }: StaggerContainerProps) {
   const shouldReduceMotion = useReducedMotion();
@@ -116,14 +116,14 @@ export function StaggerItem({
   }
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 10, scale: 0.98 },
+    hidden: { opacity: 0, y: 8, scale: 0.99 },
     show: {
       opacity: 1,
       y: 0,
       scale: 1,
       transition: {
-        duration: 0.3,
-        ease: "easeOut" as const,
+        duration: 0.28,
+        ease: [0.16, 1, 0.3, 1] as const,
       },
     },
   };
@@ -164,6 +164,135 @@ export function ScaleOnHover({
       whileTap={{ scale: tapScale }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/**
+ * BorderBeam
+ * Magic UI Inspired Animated Border Beam.
+ * Uses an SVG border with hardware-accelerated animated stroke to travel around
+ * any card or container perimeter without breaking layout or borders.
+ */
+interface BorderBeamProps {
+  className?: string;
+  size?: number;
+  duration?: number;
+  borderWidth?: number;
+  colorFrom?: string;
+  colorTo?: string;
+  borderRadius?: number;
+}
+
+export function BorderBeam({
+  className,
+  duration = 10,
+  borderWidth = 1.5,
+  colorFrom = "#d95a2b",
+  colorTo = "#f59e0b",
+  borderRadius = 16,
+}: BorderBeamProps) {
+  const shouldReduceMotion = useReducedMotion();
+
+  if (shouldReduceMotion) {
+    return null;
+  }
+
+  const gradientId = `beam-grad-${Math.random().toString(36).substr(2, 9)}`;
+
+  return (
+    <svg
+      className={cn(
+        "pointer-events-none absolute inset-0 size-full rounded-[inherit] overflow-visible z-20",
+        className
+      )}
+      style={{
+        padding: `${borderWidth / 2}px`,
+      }}
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor={colorFrom} stopOpacity="0" />
+          <stop offset="50%" stopColor={colorFrom} stopOpacity="1" />
+          <stop offset="100%" stopColor={colorTo} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <motion.rect
+        width="100%"
+        height="100%"
+        rx={borderRadius}
+        fill="none"
+        stroke={`url(#${gradientId})`}
+        strokeWidth={borderWidth}
+        strokeDasharray="160 380"
+        animate={{
+          strokeDashoffset: [0, -540],
+        }}
+        transition={{
+          repeat: Infinity,
+          duration,
+          ease: "linear",
+        }}
+      />
+    </svg>
+  );
+}
+
+/**
+ * Magnetic
+ * React Bits Inspired Magnetic Pull interaction.
+ * Moves subtly toward the cursor when hovering to give an organic, high-end feel.
+ */
+interface MagneticProps {
+  children: React.ReactNode;
+  className?: string;
+  strength?: number; // max pixel shift (e.g., 6)
+  range?: number; // activation radius
+}
+
+export function Magnetic({
+  children,
+  className,
+  strength = 6,
+}: MagneticProps) {
+  const shouldReduceMotion = useReducedMotion();
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  if (shouldReduceMotion) {
+    return <div className={className}>{children}</div>;
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return;
+    const { clientX, clientY } = e;
+    const { left, top, width, height } = ref.current.getBoundingClientRect();
+    const centerX = left + width / 2;
+    const centerY = top + height / 2;
+
+    const deltaX = (clientX - centerX) / (width / 2);
+    const deltaY = (clientY - centerY) / (height / 2);
+
+    setPosition({
+      x: deltaX * strength,
+      y: deltaY * strength,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setPosition({ x: 0, y: 0 });
+  };
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      animate={{ x: position.x, y: position.y }}
+      transition={{ type: "spring", stiffness: 350, damping: 20, mass: 0.5 }}
+      className={cn("inline-block", className)}
     >
       {children}
     </motion.div>
@@ -214,3 +343,15 @@ export function PulsingScanner({
     </div>
   );
 }
+
+// Re-export Ready-Made Professional Animation Components
+export * from "./magic-card";
+export * from "./orbiting-circles";
+export * from "./number-ticker";
+export * from "./shimmer-button";
+export * from "./blur-fade";
+export * from "./spotlight-card";
+export * from "./star-border";
+export * from "./moving-border";
+export * from "./multi-step-loader";
+

@@ -7,6 +7,7 @@ import { CheckCircle2, AlertCircle, Loader2, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { FadeIn, Magnetic } from "@/components/ui/motion-primitives";
 import { RouteLoadingView } from "@/components/ui/innovedge-loader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,7 +122,9 @@ function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" />
+      <FadeIn>
+        <PageHeader title="Settings" />
+      </FadeIn>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="glass space-y-4 rounded-2xl p-6">
           <h3 className="font-semibold">AI Model & Gemini API</h3>
@@ -163,18 +166,20 @@ function SettingsPage() {
           </div>
 
           <div className="pt-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleTestConnection}
-              loading={testing}
-              loadingText="Testing Gemini 3.1 Flash Lite Connection..."
-              className="gap-2"
-            >
-              <Zap className="size-3.5 text-primary" />
-              Test Gemini 3.1 Flash Lite Connection
-            </Button>
+            <Magnetic strength={4}>
+              <Button
+                type="button"
+                variant="shimmer"
+                size="sm"
+                onClick={handleTestConnection}
+                loading={testing}
+                loadingText="Testing Gemini 3.1 Flash Lite Connection..."
+                className="gap-2"
+              >
+                <Zap className="size-3.5 text-primary-foreground" />
+                Test Gemini 3.1 Flash Lite Connection
+              </Button>
+            </Magnetic>
 
             {testResult && (
               <div className={`mt-2 rounded-lg p-2.5 text-xs ${testResult.success ? "bg-success/10 text-success border border-success/20" : "bg-destructive/10 text-destructive border border-destructive/20"}`}>
@@ -190,7 +195,9 @@ function SettingsPage() {
           <h3 className="font-semibold">Component weights</h3>
           {COMPONENTS.map((c) => <div key={c} className="flex items-center gap-3"><Label className="w-40">{COMPONENT_LABEL[c]}</Label><Input type="number" value={weights[c] ?? ""} onChange={(e) => setWeights({ ...weights, [c]: e.target.value })} /><span className="text-sm text-muted-foreground">%</span></div>)}
           <p className={`text-sm ${Math.abs(wSum - 100) > 0.001 ? "text-warning" : "text-muted-foreground"}`}>Total: {wSum}%</p>
-          <Button size="sm" onClick={saveWeights}>Save weights & recalculate</Button>
+          <Magnetic strength={4}>
+            <Button size="sm" onClick={saveWeights}>Save weights & recalculate</Button>
+          </Magnetic>
         </div>
         <div className="glass space-y-4 rounded-2xl p-6 lg:col-span-2">
           <h3 className="font-semibold">Queue & limits</h3>
@@ -202,7 +209,9 @@ function SettingsPage() {
             {num("daily_request_limit", "Daily request limit", "Queue stops when reached")}
             {num("max_pdf_mb", "Max PDF size (MB)", "Up to 3 MB")}
           </div>
-          <Button onClick={save}>Save settings</Button>
+          <Magnetic strength={4}>
+            <Button onClick={save}>Save settings</Button>
+          </Magnetic>
           <p className="text-xs text-muted-foreground">Criteria are managed on the <Link to="/criteria" className="text-primary">Evaluation Criteria</Link> page. Add a GitHub token in your project secrets as GITHUB_TOKEN to raise GitHub's 60-requests/hour public limit.</p>
         </div>
       </div>

@@ -24,7 +24,9 @@ import { fetchAll, logActivity } from "@/lib/db";
 import { checkPdf, submissionSchema } from "@/lib/submission";
 import { extractPdfText } from "@/lib/pdf";
 import { upsertPersistentTeam, savePersistentMembers } from "@/lib/team-store";
-import { FadeIn } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, Magnetic, BorderBeam, ShimmerButton } from "@/components/ui/motion-primitives";
+import { GlassCard3D } from "@/components/ui/glass-card-3d";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 
 export const Route = createFileRoute("/_authenticated/import")({
   head: () => ({
@@ -366,14 +368,18 @@ function ImportPage() {
           title="Bulk Excel Import"
           desc="Import hackathon teams, problem statements, and project repositories directly from an Excel (.xlsx, .xls) or CSV spreadsheet."
         >
-          <Button variant="outline" onClick={downloadTemplate} className="gap-2">
-            <Download className="size-4" />
-            Download Excel Template (.xlsx)
-          </Button>
-          <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
-            <Upload className="size-4" />
-            Select Excel File
-          </Button>
+          <Magnetic strength={4}>
+            <Button variant="outline" onClick={downloadTemplate} className="gap-2">
+              <Download className="size-4" />
+              Download Excel Template (.xlsx)
+            </Button>
+          </Magnetic>
+          <Magnetic strength={4}>
+            <ShimmerButton onClick={() => fileInputRef.current?.click()} className="gap-2 text-sm font-semibold h-9">
+              <Upload className="size-4" />
+              Select Excel File
+            </ShimmerButton>
+          </Magnetic>
           <input
             ref={fileInputRef}
             type="file"
@@ -391,12 +397,13 @@ function ImportPage() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-300 ${
+          className={`relative overflow-hidden cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-300 ${
             isDragging
               ? "border-primary bg-primary/10 scale-[1.01]"
               : "border-border/80 bg-card/60 hover:border-primary/60 hover:bg-card/90"
           }`}
         >
+          {isDragging && <BorderBeam colorFrom="#d95a2b" colorTo="#f59e0b" duration={4} borderWidth={2} />}
           <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-primary/15 text-primary mb-4">
             <FileSpreadsheet className="size-8" />
           </div>
@@ -431,34 +438,48 @@ function ImportPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Summary Metric Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="glass rounded-xl p-3.5 border border-border/80">
-              <div className="text-xs text-muted-foreground font-medium">Loaded File</div>
-              <div className="text-sm font-bold text-foreground truncate mt-0.5" title={fileName}>
-                {fileName}
-              </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">{rows.length} total rows</div>
-            </div>
+          {/* Summary Metric Cards with 3D Specular Tilt */}
+          <StaggerContainer className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StaggerItem>
+              <GlassCard3D glowColor="primary" className="p-3.5 h-full">
+                <div className="text-xs text-muted-foreground font-medium">Loaded File</div>
+                <div className="text-sm font-bold text-foreground truncate mt-0.5" title={fileName}>
+                  {fileName}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{rows.length} total rows</div>
+              </GlassCard3D>
+            </StaggerItem>
 
-            <div className="glass rounded-xl p-3.5 border border-emerald-500/30 bg-emerald-500/5">
-              <div className="text-xs text-emerald-600 font-medium">Ready to Import</div>
-              <div className="text-2xl font-bold font-mono text-emerald-600 mt-0.5">{validCount}</div>
-              <div className="text-[11px] text-emerald-600/80 mt-0.5">Valid team rows</div>
-            </div>
+            <StaggerItem>
+              <GlassCard3D glowColor="emerald" className="p-3.5 border-emerald-500/30 bg-emerald-500/5 h-full">
+                <div className="text-xs text-emerald-600 font-medium">Ready to Import</div>
+                <div className="text-2xl font-bold font-mono text-emerald-600 mt-0.5">
+                  <AnimatedNumber value={validCount} precision={0} />
+                </div>
+                <div className="text-[11px] text-emerald-600/80 mt-0.5">Valid team rows</div>
+              </GlassCard3D>
+            </StaggerItem>
 
-            <div className="glass rounded-xl p-3.5 border border-amber-500/30 bg-amber-500/5">
-              <div className="text-xs text-amber-600 font-medium">Duplicates</div>
-              <div className="text-2xl font-bold font-mono text-amber-600 mt-0.5">{duplicateCount}</div>
-              <div className="text-[11px] text-amber-600/80 mt-0.5">Skipped automatically</div>
-            </div>
+            <StaggerItem>
+              <GlassCard3D glowColor="amber" className="p-3.5 border-amber-500/30 bg-amber-500/5 h-full">
+                <div className="text-xs text-amber-600 font-medium">Duplicates</div>
+                <div className="text-2xl font-bold font-mono text-amber-600 mt-0.5">
+                  <AnimatedNumber value={duplicateCount} precision={0} />
+                </div>
+                <div className="text-[11px] text-amber-600/80 mt-0.5">Skipped automatically</div>
+              </GlassCard3D>
+            </StaggerItem>
 
-            <div className="glass rounded-xl p-3.5 border border-rose-500/30 bg-rose-500/5">
-              <div className="text-xs text-rose-600 font-medium">Incomplete</div>
-              <div className="text-2xl font-bold font-mono text-rose-600 mt-0.5">{issueCount}</div>
-              <div className="text-[11px] text-rose-600/80 mt-0.5">Missing required fields</div>
-            </div>
-          </div>
+            <StaggerItem>
+              <GlassCard3D glowColor="rose" className="p-3.5 border-rose-500/30 bg-rose-500/5 h-full">
+                <div className="text-xs text-rose-600 font-medium">Incomplete</div>
+                <div className="text-2xl font-bold font-mono text-rose-600 mt-0.5">
+                  <AnimatedNumber value={issueCount} precision={0} />
+                </div>
+                <div className="text-[11px] text-rose-600/80 mt-0.5">Missing required fields</div>
+              </GlassCard3D>
+            </StaggerItem>
+          </StaggerContainer>
 
           {/* Prominent Action Bar with Confirm Command */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 rounded-xl bg-card border border-border/80 shadow-sm">
@@ -481,17 +502,20 @@ function ImportPage() {
               >
                 Clear
               </Button>
-              <Button
-                size="lg"
-                onClick={save}
-                loading={busy}
-                loadingText={`Importing ${validCount} teams...`}
-                disabled={!validCount}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md gap-2 px-6"
-              >
-                <CheckCircle2 className="size-5" />
-                Confirm &amp; Import {validCount} Teams from Excel
-              </Button>
+              <Magnetic strength={4}>
+                <Button
+                  size="lg"
+                  variant="shimmer"
+                  onClick={save}
+                  loading={busy}
+                  loadingText={`Importing ${validCount} teams...`}
+                  disabled={!validCount}
+                  className="font-bold shadow-md gap-2 px-6"
+                >
+                  <CheckCircle2 className="size-5" />
+                  Confirm &amp; Import {validCount} Teams from Excel
+                </Button>
+              </Magnetic>
             </div>
           </div>
 

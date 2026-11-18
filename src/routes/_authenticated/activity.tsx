@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FadeIn } from "@/components/ui/motion-primitives";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/activity")({
@@ -26,7 +28,9 @@ function Activity() {
   const list = (logs.data ?? []).filter((l) => !q || `${l.action} ${l.details} ${l.actor_email}`.toLowerCase().includes(q.toLowerCase()));
   return (
     <>
-      <PageHeader title="Activity logs" desc="Every admin action and score change is recorded." />
+      <FadeIn>
+        <PageHeader title="Activity logs" desc="Every admin action and score change is recorded." />
+      </FadeIn>
       <Input className="mb-4 w-72" placeholder="Filter" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="glass rounded-2xl p-5">
@@ -45,14 +49,20 @@ function Activity() {
             ) : !list.length ? (
               <p className="text-muted-foreground">No activity yet.</p>
             ) : (
-              list.map((l) => (
-                <div key={l.id} className="border-b border-border/50 pb-2">
+              list.map((l, idx) => (
+                <motion.div
+                  key={l.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: Math.min(idx * 0.02, 0.3) }}
+                  className="border-b border-border/50 pb-2 hover:bg-muted/20 px-1 rounded transition-colors"
+                >
                   <div className="flex justify-between">
                     <span className="font-medium">{l.action}</span>
                     <span className="text-xs text-muted-foreground">{new Date(l.created_at).toLocaleString()}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">{l.actor_email}{l.details && ` · ${l.details}`}</div>
-                </div>
+                </motion.div>
               ))
             )}
           </div>
@@ -73,8 +83,14 @@ function Activity() {
             ) : !overrides.data?.length ? (
               <p className="text-muted-foreground">No score edits yet.</p>
             ) : (
-              overrides.data?.map((o: any) => (
-                <div key={o.id} className="border-b border-border/50 pb-2">
+              overrides.data?.map((o: any, idx: number) => (
+                <motion.div
+                  key={o.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: Math.min(idx * 0.02, 0.3) }}
+                  className="border-b border-border/50 pb-2 hover:bg-muted/20 px-1 rounded transition-colors"
+                >
                   <div className="flex justify-between">
                     <span>{o.teams?.name} · {o.field}</span>
                     <span className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString()}</span>
@@ -82,7 +98,7 @@ function Activity() {
                   <div className="text-xs text-muted-foreground">
                     <span className="font-mono">{o.previous_value ?? "—"} → {o.new_value ?? "—"}</span> · {o.reason}
                   </div>
-                </div>
+                </motion.div>
               ))
             )}
           </div>

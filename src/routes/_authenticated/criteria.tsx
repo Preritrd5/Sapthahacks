@@ -28,7 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, BorderBeam, Magnetic } from "@/components/ui/motion-primitives";
 import { COMPONENTS, COMPONENT_LABEL, type Component } from "@/lib/scoring";
 import { logActivity } from "@/lib/db";
 import type { Tables } from "@/integrations/supabase/types";
@@ -530,6 +530,15 @@ function Criteria() {
                     : "opacity-75 hover:opacity-100"
                 }`}
               >
+                {isSelected && (
+                  <BorderBeam
+                    colorFrom={k === "pdf" ? "#f43f5e" : k === "github" ? "#0ea5e9" : "#10b981"}
+                    colorTo={k === "pdf" ? "#fb7185" : k === "github" ? "#38bdf8" : "#34d399"}
+                    duration={8}
+                    borderWidth={1.5}
+                    borderRadius={16}
+                  />
+                )}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div

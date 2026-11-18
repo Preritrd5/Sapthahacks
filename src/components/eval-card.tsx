@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { StatusBadge, fmt } from "@/components/page-header";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { AnimatedProgress } from "@/components/ui/animated-progress";
-import { PulsingScanner } from "@/components/ui/motion-primitives";
+import { PulsingScanner, BorderBeam } from "@/components/ui/motion-primitives";
 import { COMPONENT_LABEL, effectiveMarks, sumScores, type Component } from "@/lib/scoring";
 import { enqueue, logActivity } from "@/lib/db";
 import { useQueueRunner } from "@/lib/queue-runner";
@@ -242,6 +242,16 @@ export function EvalCard({
         isProcessing && "ring-1 ring-primary/40 shadow-lg shadow-primary/5"
       )}
     >
+      {/* Animated Traveling Laser Beam while AI Evaluates */}
+      {isProcessing && (
+        <BorderBeam
+          colorFrom={component === "pdf" ? "#f43f5e" : component === "github" ? "#0ea5e9" : "#10b981"}
+          colorTo={component === "pdf" ? "#fb7185" : component === "github" ? "#38bdf8" : "#34d399"}
+          duration={3.5}
+          borderWidth={2}
+          borderRadius={16}
+        />
+      )}
       {/* Top Header */}
       <div className="flex items-start justify-between gap-2">
         <div>

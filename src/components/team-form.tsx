@@ -17,6 +17,7 @@ import { fetchProblemStatements, type ProblemStatement } from "@/lib/problem-sta
 import { upsertPersistentTeam, savePersistentMembers } from "@/lib/team-store";
 import { evaluateSingleTeam } from "@/lib/evaluation-engine";
 import { cn } from "@/lib/utils";
+import { Magnetic } from "@/components/ui/motion-primitives";
 
 type Member = { name: string; email: string };
 
@@ -508,13 +509,16 @@ export function TeamForm({ team, members: initial }: { team?: Team; members?: Me
             </div>
           )}
         </div>
-        <Button
-          className="w-full"
-          loading={busy}
-          loadingText={team ? "Saving changes..." : "Creating team & extracting PDF..."}
-        >
-          {team ? "Save changes" : "Create team"}
-        </Button>
+        <Magnetic strength={4} className="w-full">
+          <Button
+            className="w-full"
+            variant="shimmer"
+            loading={busy}
+            loadingText={team ? "Saving changes..." : "Creating team & extracting PDF..."}
+          >
+            {team ? "Save changes" : "Create team"}
+          </Button>
+        </Magnetic>
       </div>
     </form>
   );

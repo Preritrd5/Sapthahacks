@@ -17,6 +17,8 @@ import {
   X,
   ExternalLink,
   Trash2,
+  Trophy,
+  RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, fmt, StatusBadge } from "@/components/page-header";
@@ -33,8 +35,9 @@ import { logActivity } from "@/lib/db";
 import { runFastPlagiarismCheck, applyPlagiarismDeduction, type PlagiarismResult } from "@/lib/plagiarism";
 import { TeamReportCard } from "@/components/team-report-card";
 import { DeleteTeamModal } from "@/components/delete-team-modal";
+import { QualifiedTeamsReport } from "@/components/qualified-teams-report";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, Magnetic } from "@/components/ui/motion-primitives";
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
 
 export const Route = createFileRoute("/_authenticated/qualification")({
@@ -66,6 +69,12 @@ function QualificationPage() {
   const [reportTeam, setReportTeam] = useState<TeamRow | null>(null);
   const [teamToDelete, setTeamToDelete] = useState<TeamRow | null>(null);
 
+  // Top N & Cutoff Shortlist Controls
+  const [topNInput, setTopNInput] = useState<number>(10);
+  const [cutoffInput, setCutoffInput] = useState<number>(70);
+  const [showQualifiedReportModal, setShowQualifiedReportModal] = useState<boolean>(false);
+  const [isPrintingQualified, setIsPrintingQualified] = useState<boolean>(false);
+
   // Plagiarism Results Map
   const [plagiarismMap, setPlagiarismMap] = useState<Map<string, PlagiarismResult>>(() =>
     runFastPlagiarismCheck(teams)
@@ -76,6 +85,17 @@ function QualificationPage() {
   const totalCount = teams.length;
   const qualifiedCount = teams.filter((t) => t.final_status === "approved" || t.final_status === "qualified").length;
   const flaggedCount = Array.from(plagiarismMap.values()).filter((p) => p.isFlagged).length;
+
+  // Sorted list of officially qualified teams (for certified PDF export)
+  const rankedQualifiedTeams = useMemo(() => {
+    return teams
+      .filter((t) => t.final_status === "approved" || t.final_status === "qualified")
+      .sort((a, b) => {
+        const scoreA = a.officialFinal ?? a.aiFinal ?? -1;
+        const scoreB = b.officialFinal ?? b.aiFinal ?? -1;
+        return scoreB - scoreA;
+      });
+  }, [teams]);
 
   // Extract unique problem statements
   const problemStatements = useMemo(() => {
@@ -137,17 +157,76 @@ function QualificationPage() {
     );
   };
 
-  // Auto-Qualify Teams with score >= 70%
-  const handleAutoQualifyTop = async () => {
+  // Qualify Top N Teams by Competitive Ranking (e.g. Top 10, Top 5)
+  const handleQualifyTopN = async (count: number) => {
+    if (count <= 0) return;
+
+    // Rank all teams by aggregate score descending
+    const sorted = [...teams].sort((a, b) => {
+      const sA = a.officialFinal ?? a.aiFinal ?? -1;
+      const sB = b.officialFinal ?? b.aiFinal ?? -1;
+      return sB - sA;
+    });
+
+    const targetTeams = sorted.slice(0, count);
+    if (!targetTeams.length) {
+      return toast.info("No teams available to qualify.");
+    }
+
+    const minScore = (targetTeams[targetTeams.length - 1]?.officialFinal ?? targetTeams[targetTeams.length - 1]?.aiFinal ?? 0).toFixed(1);
+    const maxScore = (targetTeams[0]?.officialFinal ?? targetTeams[0]?.aiFinal ?? 0).toFixed(1);
+
+    if (
+      !confirm(
+        `Move the Top ${targetTeams.length} highest-scoring teams into QUALIFIED status for Round 2?\n\n` +
+        `• Highest Score: ${maxScore} / 100\n` +
+        `• Cutoff Mark: ${minScore} / 100\n` +
+        `• Teams to qualify: ${targetTeams.length}\n\n` +
+        `Confirm Round 2 Finalist Shortlist?`
+      )
+    ) {
+      return;
+    }
+
+    targetTeams.forEach((t) => {
+      updatePersistentTeam(t.id, {
+        final_status: "approved",
+        updated_at: new Date().toISOString(),
+      });
+    });
+
+    try {
+      await supabase
+        .from("teams")
+        .update({ final_status: "approved", updated_at: new Date().toISOString() })
+        .in(
+          "id",
+          targetTeams.map((t) => t.id)
+        );
+
+      await logActivity(
+        "Qualified Top N Teams",
+        `Top ${targetTeams.length} teams qualified by competitive rank (cut-off: ${minScore}/100)`
+      );
+    } catch (err) {
+      console.warn("Could not sync to Supabase:", err);
+    }
+
+    qc.invalidateQueries({ queryKey: ["team-rows"] });
+    toast.success(`✓ Successfully qualified Top ${targetTeams.length} teams for Round 2!`);
+  };
+
+  // Qualify by Minimum Score Cutoff Threshold
+  const handleQualifyCutoff = async (cutoff: number) => {
     const toQualify = teams.filter(
-      (t) => (t.officialFinal ?? t.aiFinal ?? 0) >= 70 && t.final_status !== "qualified" && t.final_status !== "approved"
+      (t) => (t.officialFinal ?? t.aiFinal ?? 0) >= cutoff && t.final_status !== "qualified" && t.final_status !== "approved"
     );
 
     if (toQualify.length === 0) {
-      return toast.info("No new teams with score >= 70% found to auto-qualify.");
+      return toast.info(`No unapproved teams found with score >= ${cutoff}%.`);
     }
 
-    if (!confirm(`Auto-qualify ${toQualify.length} team(s) with score >= 70%?`)) return;
+    if (!confirm(`Mark ${toQualify.length} team(s) with score >= ${cutoff}% as officially QUALIFIED?`)) return;
 
     toQualify.forEach((t) => {
       updatePersistentTeam(t.id, { final_status: "approved", updated_at: new Date().toISOString() });
@@ -162,10 +241,58 @@ function QualificationPage() {
           toQualify.map((t) => t.id)
         );
 
-      await logActivity("Bulk auto-qualified teams", `${toQualify.length} teams qualified`);
+      await logActivity("Bulk qualified teams by cutoff", `${toQualify.length} teams qualified with score >= ${cutoff}%`);
     } catch (err) {}
+
     qc.invalidateQueries({ queryKey: ["team-rows"] });
-    toast.success(`Successfully qualified ${toQualify.length} high-scoring teams!`);
+    toast.success(`✓ Successfully qualified ${toQualify.length} teams with score >= ${cutoff}%!`);
+  };
+
+  // Reset all qualification ticks back to Pending
+  const handleResetAllQualifications = async () => {
+    const currentlyQual = teams.filter((t) => t.final_status === "approved" || t.final_status === "qualified");
+    if (!currentlyQual.length) {
+      return toast.info("No teams are currently marked as qualified.");
+    }
+
+    if (!confirm(`Reset qualification status for all ${currentlyQual.length} qualified team(s) back to Pending?`)) {
+      return;
+    }
+
+    currentlyQual.forEach((t) => {
+      updatePersistentTeam(t.id, { final_status: "pending", updated_at: new Date().toISOString() });
+    });
+
+    try {
+      await supabase
+        .from("teams")
+        .update({ final_status: "pending", updated_at: new Date().toISOString() })
+        .in(
+          "id",
+          currentlyQual.map((t) => t.id)
+        );
+
+      await logActivity("Reset qualifications", `${currentlyQual.length} teams reset to pending`);
+    } catch (err) {}
+
+    qc.invalidateQueries({ queryKey: ["team-rows"] });
+    toast.info(`Qualification reset to Pending for ${currentlyQual.length} team(s).`);
+  };
+
+  // Direct Form-Wise PDF Print (Clean pure document, no sliders or website screenshot)
+  const handleDirectPrintPdf = () => {
+    if (!rankedQualifiedTeams.length) {
+      return toast.warning("No teams are currently qualified. Select or qualify teams first (e.g. click 'Top 10').");
+    }
+    setIsPrintingQualified(true);
+    document.body.classList.add("printing-qualified-list");
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        setIsPrintingQualified(false);
+        document.body.classList.remove("printing-qualified-list");
+      }, 500);
+    }, 100);
   };
 
   // Apply Plagiarism Deduction
@@ -237,25 +364,45 @@ function QualificationPage() {
       <FadeIn>
         <PageHeader
           title="Team Qualification"
-          desc="Tick teams to shortlist them for the next round. Generate certified 1-page reports with watermark and run fast plagiarism audits."
+          desc="Shortlist top-performing teams for Round 2, select Top N finalists, and export certified form-wise PDF reports."
         >
-          <Button variant="outline" onClick={handleRunPlagiarism} className="gap-2">
-            <ShieldCheck className="size-4 text-primary" />
-            Run Plagiarism Check
-          </Button>
-          <Button variant="secondary" onClick={handleAutoQualifyTop} className="gap-1.5">
-            <Sparkles className="size-4 text-amber-500" />
-            Auto-Qualify (&ge;70%)
-          </Button>
-          <Button onClick={() => window.print()} className="gap-2">
-            <Printer className="size-4" />
-            Print Qualified List
-          </Button>
+          <Magnetic strength={4}>
+            <Button variant="outline" onClick={handleRunPlagiarism} className="gap-2">
+              <ShieldCheck className="size-4 text-primary" />
+              Run Plagiarism Check
+            </Button>
+          </Magnetic>
+          <Magnetic strength={4}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!rankedQualifiedTeams.length) {
+                  return toast.info("No teams currently qualified. Click 'Top 10' or tick teams below first.");
+                }
+                setShowQualifiedReportModal(true);
+              }}
+              className="gap-2 border-primary/40 text-primary hover:bg-primary/10 shadow-xs"
+            >
+              <FileText className="size-4" />
+              Preview PDF Form ({qualifiedCount})
+            </Button>
+          </Magnetic>
+          <Magnetic strength={4}>
+            <Button
+              onClick={handleDirectPrintPdf}
+              loading={isPrintingQualified}
+              loadingText="Formatting PDF..."
+              className="gap-2 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
+            >
+              <Printer className="size-4" />
+              Print / Save PDF Form
+            </Button>
+          </Magnetic>
         </PageHeader>
       </FadeIn>
 
       {/* Stats Cards Banner with 3D Tilt & Specular Sheen */}
-      <StaggerContainer className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <StaggerContainer className="mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StaggerItem>
           <GlassCard3D
             glowColor="rgba(217, 90, 43, 0.2)"
@@ -324,6 +471,98 @@ function QualificationPage() {
           </GlassCard3D>
         </StaggerItem>
       </StaggerContainer>
+
+      {/* Quick Finalist Shortlist & Selection Bar */}
+      <div className="mb-5 glass rounded-2xl p-4 sm:p-5 border border-border/80 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Trophy className="size-4 text-amber-500" />
+            <span className="text-sm font-bold text-foreground">
+              Select Finalist Shortlist (Round 2 Qualification):
+            </span>
+          </div>
+          <span className="text-xs text-muted-foreground font-mono">
+            Qualified:{" "}
+            <strong className="text-emerald-600 font-bold">{qualifiedCount}</strong> / {totalCount} Teams
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 pt-1">
+          {/* Quick preset buttons */}
+          <span className="text-xs font-semibold text-muted-foreground">Select Top:</span>
+          {[5, 10, 15, 20].map((n) => (
+            <Button
+              key={n}
+              size="sm"
+              variant="secondary"
+              onClick={() => handleQualifyTopN(n)}
+              className="h-8 text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all active:scale-95"
+            >
+              Top {n}
+            </Button>
+          ))}
+
+          <div className="h-4 w-px bg-border/60 mx-1 hidden sm:block" />
+
+          {/* Custom N input */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Top</span>
+            <Input
+              type="number"
+              min={1}
+              max={totalCount || 100}
+              value={topNInput}
+              onChange={(e) => setTopNInput(Math.max(1, Number(e.target.value) || 1))}
+              className="w-16 h-8 text-xs text-center font-mono font-bold"
+            />
+            <Button
+              size="sm"
+              onClick={() => handleQualifyTopN(topNInput)}
+              className="h-8 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Qualify Top {topNInput}
+            </Button>
+          </div>
+
+          <div className="h-4 w-px bg-border/60 mx-1 hidden md:block" />
+
+          {/* Cutoff input */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Cutoff &ge;</span>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={cutoffInput}
+              onChange={(e) => setCutoffInput(Number(e.target.value) || 0)}
+              className="w-16 h-8 text-xs text-center font-mono font-bold"
+            />
+            <span className="text-xs text-muted-foreground font-mono">%</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleQualifyCutoff(cutoffInput)}
+              className="h-8 text-xs font-semibold border-amber-500/40 text-amber-600 hover:bg-amber-500/10"
+            >
+              Qualify &ge;{cutoffInput}%
+            </Button>
+          </div>
+
+          {/* Reset button */}
+          {qualifiedCount > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleResetAllQualifications}
+              className="ml-auto h-8 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              title="Reset all qualification ticks back to pending"
+            >
+              <RotateCcw className="size-3.5 mr-1" />
+              Reset All ({qualifiedCount})
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Search, Filter & Sort Controls */}
       <div className="mb-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
@@ -556,6 +795,16 @@ function QualificationPage() {
         onClose={() => setReportTeam(null)}
         plagiarismScore={reportTeam ? (plagiarismMap.get(reportTeam.id)?.overallSimilarity ?? plagiarismMap.get(reportTeam.id)?.similarityScore) : undefined}
         plagiarismResult={reportTeam ? plagiarismMap.get(reportTeam.id) : undefined}
+      />
+
+      {/* Official Form-Wise Qualified Teams Report & Dedicated Print Portal */}
+      <QualifiedTeamsReport
+        teams={rankedQualifiedTeams}
+        isOpen={showQualifiedReportModal}
+        onClose={() => setShowQualifiedReportModal(false)}
+        selectionTitle={`Top ${rankedQualifiedTeams.length} Shortlisted Finalists`}
+        totalRegisteredCount={totalCount}
+        plagiarismMap={plagiarismMap}
       />
     </>
   );

@@ -139,7 +139,7 @@ export const useTeamRows = (_explicitUserId?: string | null) => {
             evals: ev,
             aiFinal: ai.score,
             approvedFinal: ap.score,
-            officialFinal: t.final_override ?? ap.score,
+            officialFinal: t.final_override ?? ap.score ?? ai.score,
             missing: ap.missing,
             overall: overallStatus(t, ev),
           };

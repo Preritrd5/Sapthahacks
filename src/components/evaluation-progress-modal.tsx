@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedProgress } from "@/components/ui/animated-progress";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { PulsingScanner, ScaleOnHover } from "@/components/ui/motion-primitives";
+import { PulsingScanner, ScaleOnHover, BorderBeam, NumberTicker } from "@/components/ui/motion-primitives";
 import { InnovedgeLoader } from "@/components/ui/innovedge-loader";
+import { CinematicEvalOrb } from "@/components/ui/cinematic-eval-orb";
 import { type TeamRow } from "@/lib/queries";
 import { type Component, COMPONENT_LABEL } from "@/lib/scoring";
 import { type EvaluationProgress } from "@/lib/evaluation-engine";
@@ -143,6 +144,14 @@ export function EvaluationProgressModal({
                 transition={{ duration: 0.25 }}
                 className="space-y-5"
               >
+                {/* Cinematic Orbital Quantum Core */}
+                <CinematicEvalOrb
+                  activeComponent={progress?.component}
+                  progressPct={currentPct}
+                  isEvaluating={true}
+                  className="my-1"
+                />
+
                 {/* Overall Progress Meter */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-mono">
@@ -207,6 +216,7 @@ export function EvaluationProgressModal({
               >
                 {/* Celebratory Badge & Big Score */}
                 <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-background/60 to-primary/10 p-6 text-center">
+                  <BorderBeam colorFrom="#10b981" colorTo="#059669" duration={6} borderWidth={1.5} borderRadius={16} />
                   {/* Subtle celebratory glow ring */}
                   <motion.div
                     initial={shouldReduceMotion ? { scale: 1 } : { scale: 0 }}
@@ -222,10 +232,9 @@ export function EvaluationProgressModal({
                   </div>
 
                   <div className="font-display text-4xl sm:text-5xl font-extrabold text-foreground tracking-tight">
-                    <AnimatedNumber
-                      value={team.officialFinal ?? team.aiFinal}
-                      precision={1}
-                      duration={1.2}
+                    <NumberTicker
+                      value={team.officialFinal ?? team.aiFinal ?? 0}
+                      decimalPlaces={1}
                     />
                     <span className="text-xl sm:text-2xl font-normal text-muted-foreground ml-1.5">
                       / 100
@@ -376,12 +385,21 @@ function ComponentStepCard({
           : "border-border/50 bg-card/60 opacity-75"
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
+      {/* Dynamic Laser Beam Shimmer when processing this component */}
+      {isCurrent && (
+        <motion.div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-primary/15 to-transparent"
+          animate={{ x: ["-100%", "200%"] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+
+      <div className="flex items-center justify-between gap-2 relative z-10">
         <div className="flex items-center gap-2.5 min-w-0">
           <div
             className={`flex size-8 shrink-0 items-center justify-center rounded-lg border ${
               isCurrent
-                ? "border-primary/40 bg-primary/20 text-primary"
+                ? "border-primary/40 bg-primary/20 text-primary shadow-xs shadow-primary/20"
                 : isDone
                 ? "border-emerald-500/40 bg-emerald-500/20 text-emerald-500"
                 : "border-border bg-muted text-muted-foreground"
@@ -401,13 +419,13 @@ function ComponentStepCard({
 
         <div className="shrink-0 text-right">
           {isCurrent ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary font-mono">
-              <Loader2 className="size-3 animate-spin" /> Analyzing
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary font-mono">
+              <InnovedgeLoader size="xs" /> Analyzing
             </span>
           ) : isDone ? (
             <div className="text-right">
               <span className="font-mono text-sm font-bold text-emerald-500">
-                {score != null ? Math.round(Number(score)) : "—"}
+                <AnimatedNumber value={score} precision={0} />
               </span>
               <span className="text-[10px] text-muted-foreground">/100</span>
             </div>

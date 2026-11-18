@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { StatCardSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/skeleton";
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion-primitives";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -243,7 +244,9 @@ function UsagePage() {
                   <Gauge className="size-3.5" />
                 </div>
               </div>
-              <div className="my-2.5 font-mono text-2xl font-bold">{totalRequests.toLocaleString()}</div>
+              <div className="my-2.5 font-mono text-2xl font-bold">
+                <AnimatedNumber value={totalRequests} precision={0} />
+              </div>
               <div className="text-[11px] text-muted-foreground pb-0.5">Recorded AI calls</div>
             </GlassCard3D>
           </StaggerItem>
@@ -257,7 +260,11 @@ function UsagePage() {
                 </div>
               </div>
               <div className="my-2.5 font-mono text-2xl font-bold text-emerald-500">
-                {totalRequests ? Math.round((successfulRequests / totalRequests) * 100) : 100}%
+                <AnimatedNumber
+                  value={totalRequests ? Math.round((successfulRequests / totalRequests) * 100) : 100}
+                  precision={0}
+                  suffix="%"
+                />
               </div>
               <div className="text-[11px] text-muted-foreground pb-0.5">
                 {successfulRequests} ok / {failedRequests} failed
@@ -273,7 +280,9 @@ function UsagePage() {
                   <Zap className="size-3.5" />
                 </div>
               </div>
-              <div className="my-2.5 font-mono text-2xl font-bold">{totalTokens.toLocaleString()}</div>
+              <div className="my-2.5 font-mono text-2xl font-bold">
+                <AnimatedNumber value={totalTokens} precision={0} />
+              </div>
               <div className="text-[11px] text-muted-foreground pb-0.5">
                 In: {totalPromptTokens.toLocaleString()} · Out: {totalCompletionTokens.toLocaleString()}
               </div>
@@ -304,7 +313,7 @@ function UsagePage() {
                 </div>
               </div>
               <div className="my-2.5 font-mono text-2xl font-bold text-primary">
-                ${totalCostUsd.toFixed(4)}
+                $<AnimatedNumber value={totalCostUsd} precision={4} />
               </div>
               <div className="text-[11px] text-muted-foreground pb-0.5">Calculated Gemini rates</div>
             </GlassCard3D>

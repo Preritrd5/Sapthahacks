@@ -33,7 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { FadeIn, StaggerContainer, StaggerItem, ScaleOnHover } from "@/components/ui/motion-primitives";
+import { FadeIn, StaggerContainer, StaggerItem, ScaleOnHover, Magnetic, MagicCard, NumberTicker, BlurFade } from "@/components/ui/motion-primitives";
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { StatCardSkeleton, TableSkeleton } from "@/components/ui/skeleton";
 import { EvaluationProgressModal } from "@/components/evaluation-progress-modal";
@@ -186,16 +186,20 @@ function Dashboard() {
           title="Team Evaluation Dashboard"
           desc={`Independent AI evaluations, score breakdowns, and moderation for ${totalTeams} teams.`}
         >
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/criteria">
-              <ListChecks className="size-4 mr-1.5" /> Manage Criteria
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/reports">
-              <FileDown className="size-4 mr-1.5" /> Export Reports
-            </Link>
-          </Button>
+          <Magnetic strength={4}>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/criteria">
+                <ListChecks className="size-4 mr-1.5" /> Manage Criteria
+              </Link>
+            </Button>
+          </Magnetic>
+          <Magnetic strength={4}>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/reports">
+                <FileDown className="size-4 mr-1.5" /> Export Reports
+              </Link>
+            </Button>
+          </Magnetic>
         </PageHeader>
       </FadeIn>
 
@@ -211,8 +215,8 @@ function Dashboard() {
       ) : (
         <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5">
           <StaggerItem>
-            <GlassCard3D
-              glowColor="rgba(217, 90, 43, 0.22)"
+            <MagicCard
+              gradientColor="rgba(217, 90, 43, 0.18)"
               className="p-4 border-border/80 group"
             >
               <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
@@ -220,15 +224,17 @@ function Dashboard() {
                 <Users className="size-4 text-primary transition-transform duration-300 group-hover:scale-125" />
               </div>
               <div className="mt-1 font-mono text-2xl font-bold">
-                <AnimatedNumber value={totalTeams} precision={0} />
+                <NumberTicker value={totalTeams} decimalPlaces={0} />
               </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">Registered hackathon teams</div>
-            </GlassCard3D>
+            </MagicCard>
           </StaggerItem>
 
           <StaggerItem>
-            <GlassCard3D
-              glowColor="rgba(16, 185, 129, 0.22)"
+            <MagicCard
+              gradientColor="rgba(16, 185, 129, 0.22)"
+              gradientFrom="rgba(16, 185, 129, 0.4)"
+              gradientTo="rgba(5, 150, 105, 0.15)"
               className="p-4 border-emerald-500/25 bg-emerald-500/5 group"
             >
               <div className="text-[11px] font-semibold uppercase text-emerald-500 flex items-center justify-between">
@@ -236,17 +242,19 @@ function Dashboard() {
                 <CheckCircle2 className="size-4 text-emerald-500 transition-transform duration-300 group-hover:scale-125" />
               </div>
               <div className="mt-1 font-mono text-2xl font-bold text-emerald-500">
-                <AnimatedNumber value={completedTeams} precision={0} />
+                <NumberTicker value={completedTeams} decimalPlaces={0} />
               </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">
                 {totalTeams ? Math.round((completedTeams / totalTeams) * 100) : 0}% fully evaluated
               </div>
-            </GlassCard3D>
+            </MagicCard>
           </StaggerItem>
 
           <StaggerItem>
-            <GlassCard3D
-              glowColor="rgba(245, 158, 11, 0.22)"
+            <MagicCard
+              gradientColor="rgba(245, 158, 11, 0.22)"
+              gradientFrom="rgba(245, 158, 11, 0.4)"
+              gradientTo="rgba(217, 119, 6, 0.15)"
               className="p-4 border-amber-500/25 bg-amber-500/5 group"
             >
               <div className="text-[11px] font-semibold uppercase text-amber-500 flex items-center justify-between">
@@ -254,15 +262,15 @@ function Dashboard() {
                 <Clock className="size-4 text-amber-500 transition-transform duration-300 group-hover:scale-125" />
               </div>
               <div className="mt-1 font-mono text-2xl font-bold text-amber-500">
-                <AnimatedNumber value={pendingTeams} precision={0} />
+                <NumberTicker value={pendingTeams} decimalPlaces={0} />
               </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">Awaiting manual trigger</div>
-            </GlassCard3D>
+            </MagicCard>
           </StaggerItem>
 
           <StaggerItem>
-            <GlassCard3D
-              glowColor="rgba(217, 90, 43, 0.22)"
+            <MagicCard
+              gradientColor="rgba(217, 90, 43, 0.22)"
               className="p-4 border-border/80 group"
             >
               <div className="text-[11px] font-semibold uppercase text-muted-foreground flex items-center justify-between">
@@ -270,16 +278,18 @@ function Dashboard() {
                 <Trophy className="size-4 text-primary transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6" />
               </div>
               <div className="mt-1 font-mono text-2xl font-bold text-foreground">
-                <AnimatedNumber value={avgScore} precision={1} />{" "}
+                <NumberTicker value={avgScore} decimalPlaces={1} />{" "}
                 <span className="text-xs font-normal text-muted-foreground">/ 100</span>
               </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">Across completed teams</div>
-            </GlassCard3D>
+            </MagicCard>
           </StaggerItem>
 
           <StaggerItem>
-            <GlassCard3D
-              glowColor="rgba(244, 63, 94, 0.22)"
+            <MagicCard
+              gradientColor="rgba(244, 63, 94, 0.22)"
+              gradientFrom="rgba(244, 63, 94, 0.4)"
+              gradientTo="rgba(225, 29, 72, 0.15)"
               className="p-4 border-rose-500/25 bg-rose-500/5 group"
             >
               <div className="text-[11px] font-semibold uppercase text-rose-500 flex items-center justify-between">
@@ -287,14 +297,14 @@ function Dashboard() {
                 <ShieldAlert className="size-4 text-rose-500 transition-transform duration-300 group-hover:scale-125" />
               </div>
               <div className="mt-1 font-mono text-2xl font-bold text-rose-500">
-                <AnimatedNumber value={flaggedTeams} precision={0} />
+                <NumberTicker value={flaggedTeams} decimalPlaces={0} />
               </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">
                 <Link to="/plagiarism" className="text-rose-500 underline hover:text-rose-600 font-medium">
                   Review in Plagiarism &rarr;
                 </Link>
               </div>
-            </GlassCard3D>
+            </MagicCard>
           </StaggerItem>
         </StaggerContainer>
       )}
@@ -489,15 +499,13 @@ function Dashboard() {
                     {/* Action Buttons */}
                     <td className="p-3.5 pr-4 text-center">
                       <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                        {/* Independent Manual Evaluate Button */}
+                        {/* Independent Manual Evaluate Button with Shimmer */}
                         <Button
                           size="sm"
-                          variant={isCompleted ? "outline" : "default"}
+                          variant={isCurrentlyEvaluating ? "default" : isCompleted ? "outline" : "shimmer"}
                           disabled={isCurrentlyEvaluating}
                           onClick={() => handleManualEvaluate(team, isCompleted)}
-                          className={`h-8 px-2.5 text-xs font-semibold ${
-                            !isCompleted ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
-                          }`}
+                          className="h-8 px-2.5 text-xs font-semibold shadow-xs"
                           title={isCompleted ? "Re-evaluate this team" : "Run evaluation for this team"}
                         >
                           {isCurrentlyEvaluating ? (

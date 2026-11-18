@@ -347,6 +347,75 @@
   box-shadow: 0 16px 40px -6px rgba(217, 119, 6, 0.3) !important;
 }
 
+/* Magic UI & React Bits Animations */
+@keyframes orbit {
+  0% {
+    transform: rotate(calc(var(--angle) * 1deg)) translateY(calc(var(--radius) * 1px)) rotate(calc(var(--angle) * -1deg));
+  }
+  100% {
+    transform: rotate(calc(var(--angle) * 1deg + 360deg)) translateY(calc(var(--radius) * 1px)) rotate(calc((var(--angle) * -1deg) - 360deg));
+  }
+}
+
+.animate-orbit {
+  animation: orbit var(--duration) linear infinite;
+}
+
+@keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+  }
+}
+
+@keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+  }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+  }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+  }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+  }
+}
+
+.animate-spin-around {
+  animation: spin-around calc(var(--speed, 3s)) linear infinite;
+}
+
+@keyframes star-movement-bottom {
+  0% {
+    transform: translate(0%, 0%);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-100%, 0%);
+    opacity: 0;
+  }
+}
+
+@keyframes star-movement-top {
+  0% {
+    transform: translate(0%, 0%);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(100%, 0%);
+    opacity: 0;
+  }
+}
+
+.animate-star-movement-bottom {
+  animation: star-movement-bottom linear infinite alternate;
+}
+
+.animate-star-movement-top {
+  animation: star-movement-top linear infinite alternate;
+}
+
 /* Custom Scrollbar for Modals and Panes */
 .custom-scrollbar {
   scrollbar-width: thin;
@@ -380,7 +449,8 @@ body[data-scroll-locked] {
 }
 
 @media screen {
-  #innovedge-print-portal {
+  #innovedge-print-portal,
+  #innovedge-qualified-print-portal {
     display: none !important;
   }
 }
@@ -417,15 +487,16 @@ body[data-scroll-locked] {
   [data-radix-dialog-overlay],
   [data-radix-dialog-content],
   .report-modal-scroll-area,
-  body > *:not(#innovedge-print-portal) {
+  body > *:not(#innovedge-print-portal):not(#innovedge-qualified-print-portal) {
     display: none !important;
   }
 
-  /* 3. DEDICATED SCORECARD PRINT PORTAL ISOLATION
-     When the print portal is active, isolate ONLY #innovedge-print-portal.
+  /* 3. DEDICATED SCORECARD & QUALIFIED PRINT PORTAL ISOLATION
+     When the print portal is active, isolate ONLY the active printable portal.
      It spans the full printable page width from edge-to-edge.
   */
-  #innovedge-print-portal {
+  #innovedge-print-portal,
+  #innovedge-qualified-print-portal {
     display: block !important;
     visibility: visible !important;
     position: absolute !important;
@@ -438,14 +509,38 @@ body[data-scroll-locked] {
     background: #ffffff !important;
     color: #0f172a !important;
     box-shadow: none !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    page-break-after: avoid !important;
-    break-after: avoid !important;
     overflow: visible !important;
     translate: none !important;
     transform: none !important;
     box-sizing: border-box !important;
+  }
+
+  body.printing-qualified-list #innovedge-print-portal {
+    display: none !important;
+  }
+
+  body.printing-scorecard #innovedge-qualified-print-portal {
+    display: none !important;
+  }
+
+  #innovedge-qualified-print-portal,
+  #innovedge-qualified-print-portal * {
+    visibility: visible !important;
+  }
+
+  #innovedge-qualified-print-portal .qualified-sheet {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 4mm 6mm !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  #innovedge-qualified-print-portal .page-break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #innovedge-print-portal,
