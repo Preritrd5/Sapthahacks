@@ -550,12 +550,6 @@ function ImportPage() {
               Download 4-Member Excel Template (.xlsx)
             </Button>
           </Magnetic>
-          <Magnetic strength={4}>
-            <ShimmerButton onClick={() => fileInputRef.current?.click()} className="gap-2 text-sm font-semibold h-9">
-              <Upload className="size-4" />
-              Select Excel File
-            </ShimmerButton>
-          </Magnetic>
           <input
             ref={fileInputRef}
             type="file"
