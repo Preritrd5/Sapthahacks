@@ -40,7 +40,16 @@ export function TeamForm({ team, members: initial }: { team?: Team; members?: Me
   });
 
   const [selectedPsId, setSelectedPsId] = useState<string>("");
-  const [members, setMembers] = useState<Member[]>(initial?.length ? initial : [{ name: "", email: "" }]);
+  const [members, setMembers] = useState<Member[]>(
+    initial?.length
+      ? initial
+      : [
+          { name: "", email: "" },
+          { name: "", email: "" },
+          { name: "", email: "" },
+          { name: "", email: "" },
+        ]
+  );
   const isExistingLink = !!team?.pdf_path && /^https?:\/\//i.test(team.pdf_path);
   const [pdfMode, setPdfMode] = useState<"link" | "file">(isExistingLink || !team?.pdf_path ? "link" : "file");
   const [pdfLink, setPdfLink] = useState<string>(isExistingLink ? team?.pdf_path ?? "" : "");
@@ -345,45 +354,72 @@ export function TeamForm({ team, members: initial }: { team?: Team; members?: Me
 
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <Label>Team members ({members.length})</Label>
+            <Label className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+              Team Roster (Up to 4 Members Supported)
+            </Label>
             <Button
               type="button"
               size="sm"
-              variant="secondary"
+              variant="outline"
               onClick={() => setMembers([...members, { name: "", email: "" }])}
+              className="text-xs h-7 gap-1"
             >
-              <Plus className="size-4" />
-              Add member
+              <Plus className="size-3.5" />
+              Add additional member
             </Button>
           </div>
-          <div className="space-y-2">
-            {members.map((m, i) => (
-              <div key={i} className="flex gap-2">
-                <Input
-                  placeholder="Name"
-                  value={m.name}
-                  onChange={(e) =>
-                    setMembers(members.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
-                  }
-                />
-                <Input
-                  placeholder="Email"
-                  type="email"
-                  value={m.email}
-                  onChange={(e) =>
-                    setMembers(members.map((x, j) => (j === i ? { ...x, email: e.target.value } : x)))
-                  }
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setMembers(members.filter((_, j) => j !== i))}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            ))}
+          <div className="space-y-2.5">
+            {members.map((m, i) => {
+              const label =
+                i === 0
+                  ? "Member 1 (Team Lead) *"
+                  : i === 1
+                  ? "Member 2 *"
+                  : i === 2
+                  ? "Member 3 (Optional)"
+                  : i === 3
+                  ? "Member 4 (Optional)"
+                  : `Member ${i + 1} (Optional)`;
+
+              return (
+                <div key={i} className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-1.5">
+                  <div className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between">
+                    <span>{label}</span>
+                    {i >= 2 && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="size-5 text-muted-foreground hover:text-rose-500"
+                        onClick={() => setMembers(members.filter((_, j) => j !== i))}
+                        title="Remove slot"
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input
+                      placeholder={`Member ${i + 1} Full Name`}
+                      value={m.name}
+                      onChange={(e) =>
+                        setMembers(members.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                      }
+                      className="text-xs"
+                    />
+                    <Input
+                      placeholder={`member${i + 1}@example.com`}
+                      type="email"
+                      value={m.email}
+                      onChange={(e) =>
+                        setMembers(members.map((x, j) => (j === i ? { ...x, email: e.target.value } : x)))
+                      }
+                      className="text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

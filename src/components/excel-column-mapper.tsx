@@ -11,6 +11,7 @@ import {
   Pencil,
   AlertCircle,
   HelpCircle,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -251,6 +252,66 @@ export function ExcelColumnMapper({
             </span>
           </div>
         ) : null}
+
+        {/* Four-Member Roster Support Overview */}
+        <div className="rounded-xl border border-primary/25 bg-primary/[0.04] p-3.5 space-y-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Users className="size-4 text-primary shrink-0" />
+              <span className="font-semibold text-xs text-foreground">
+                Four-Member Roster Configuration (All 4 Positions Supported)
+              </span>
+              <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30 font-semibold">
+                Slots 1–4 Active
+              </Badge>
+            </div>
+            <span className="text-[11px] text-muted-foreground font-mono">
+              Slots 1 &amp; 2 Mandatory · Slots 3 &amp; 4 Optional
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="p-2.5 rounded-lg bg-background/80 border border-border/60">
+              <div className="text-[10px] text-muted-foreground font-semibold uppercase">Slot 1</div>
+              <div className="font-bold text-foreground text-xs flex items-center gap-1 mt-0.5">
+                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 1 (Lead) *
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                Mapped to Lead Name &amp; Email
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-background/80 border border-border/60">
+              <div className="text-[10px] text-muted-foreground font-semibold uppercase">Slot 2</div>
+              <div className="font-bold text-foreground text-xs flex items-center gap-1 mt-0.5">
+                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 2 *
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                Mapped to Member 2 Name &amp; Email
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-background/80 border border-border/60">
+              <div className="text-[10px] text-muted-foreground font-semibold uppercase">Slot 3</div>
+              <div className="font-bold text-foreground text-xs flex items-center gap-1 mt-0.5">
+                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 3 (Optional)
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                Ready for 3 or 4-member teams
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-background/80 border border-border/60">
+              <div className="text-[10px] text-muted-foreground font-semibold uppercase">Slot 4</div>
+              <div className="font-bold text-foreground text-xs flex items-center gap-1 mt-0.5">
+                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 4 (Optional)
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                Ready for 4-member teams
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Column Mapping Table */}
@@ -322,6 +383,8 @@ export function ExcelColumnMapper({
                   >
                     {sampleVal ? (
                       sampleVal
+                    ) : item.targetField.startsWith("member_3_") || item.targetField.startsWith("member_4_") ? (
+                      <span className="italic text-primary/80 font-sans font-medium">Optional slot (Ready for 4-member teams)</span>
                     ) : (
                       <span className="italic opacity-60">empty in row 1</span>
                     )}
@@ -437,6 +500,13 @@ export function ExcelColumnMapper({
                     ) : hasConflict ? (
                       <Badge variant="destructive" className="text-[10px]">
                         Duplicate Mapping
+                      </Badge>
+                    ) : item.targetField.startsWith("member_3_") || item.targetField.startsWith("member_4_") ? (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] bg-primary/10 text-primary border-primary/30 font-semibold"
+                      >
+                        Optional Roster
                       </Badge>
                     ) : item.targetField === "custom_metadata" ? (
                       <Badge

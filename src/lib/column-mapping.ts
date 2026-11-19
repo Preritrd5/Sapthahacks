@@ -396,6 +396,24 @@ export function createDefaultColumnMapping(detectedHeaders: string[]): ColumnMap
     };
   }
 
+  // Ensure all 4 team member positions (Slots 1–4) are explicitly represented in mapping
+  const rosterSlots: { id: PortalFieldId; defaultHeader: string }[] = [
+    { id: "member_3_name", defaultHeader: "Member 3 Name (Optional)" },
+    { id: "member_3_email", defaultHeader: "Member 3 Email (Optional)" },
+    { id: "member_4_name", defaultHeader: "Member 4 Name (Optional)" },
+    { id: "member_4_email", defaultHeader: "Member 4 Email (Optional)" },
+  ];
+
+  for (const slot of rosterSlots) {
+    if (!mappedTargets.has(slot.id)) {
+      state[slot.defaultHeader] = {
+        targetField: slot.id,
+        selected: true,
+      };
+      mappedTargets.add(slot.id);
+    }
+  }
+
   return state;
 }
 

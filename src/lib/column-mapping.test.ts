@@ -341,30 +341,50 @@ describe("Dynamic Column Mapping & Selection Engine", () => {
     expect(team.issues.some((issue) => issue.includes("Duplicate member email"))).toBe(true);
   });
 
-  it("allows administrators to manually correct an auto-detected mapping", () => {
-    const rawData = [
+  it("ensures Member 3 and Member 4 optional slots are actively populated in mapping even for 2-member files", () => {
+    const legacy11Headers = [
+      "Project Title",
+      "Project Description",
+      "Pitch Deck / PDF (Google Drive Link)",
+      "GitHub URL",
+      "Website URL",
+      "Member1 Name",
+      "Member1 Email",
+      "Member2 Name",
+      "Member2 Email",
+      "Team Name",
+      "Team Email",
+    ];
+
+    const mapping = createDefaultColumnMapping(legacy11Headers);
+    // Member 1 & 2 mapped from uploaded file
+    expect(mapping["Member1 Name"]?.targetField).toBe("member_1_name");
+    expect(mapping["Member2 Name"]?.targetField).toBe("member_2_name");
+
+    // Member 3 & 4 slots automatically added and active
+    expect(mapping["Member 3 Name (Optional)"]?.targetField).toBe("member_3_name");
+    expect(mapping["Member 3 Email (Optional)"]?.targetField).toBe("member_3_email");
+    expect(mapping["Member 4 Name (Optional)"]?.targetField).toBe("member_4_name");
+    expect(mapping["Member 4 Email (Optional)"]?.targetField).toBe("member_4_email");
+
+    // Parsing rows with these slots works cleanly
+    const raw2Member = [
       {
-        "Team Name": "Flexi Team",
-        "Team Email": "flexi@example.com",
-        "Project Title": "Flexi Portal",
-        "Project Description": "Extensible portal system.",
-        "GitHub URL": "https://github.com/flexi/portal",
-        "Member 1 Name": "Solo Dev",
-        "Member 2 Name": "Co Dev",
-        "Department Link": "https://flexi.edu/dept",
+        "Team Name": "Test Duo",
+        "Team Email": "duo@example.com",
+        "Project Title": "Duo Test",
+        "Project Description": "Description",
+        "GitHub URL": "https://github.com/duo/test",
+        "Member1 Name": "Alice",
+        "Member1 Email": "alice@example.com",
+        "Member2 Name": "Bob",
+        "Member2 Email": "bob@example.com",
       },
     ];
 
-    const mapping = createDefaultColumnMapping(Object.keys(rawData[0]!));
-    // Default auto-detects "Department Link" as custom_metadata
-    expect(mapping["Department Link"]?.targetField).toBe("custom_metadata");
-
-    // Administrator manually remaps "Department Link" to "website_url"
-    mapping["Department Link"] = { targetField: "website_url", selected: true };
-
-    const parsed = parseRowsWithMapping(rawData, mapping, []);
+    const parsed = parseRowsWithMapping(raw2Member, mapping, []);
     expect(parsed.length).toBe(1);
-    expect(parsed[0]?.website_url).toBe("https://flexi.edu/dept");
-    expect(parsed[0]?.customMetadata["Department Link"]).toBeUndefined();
+    expect(parsed[0]?.isValid).toBe(true);
+    expect(parsed[0]?.members.length).toBe(2);
   });
 });

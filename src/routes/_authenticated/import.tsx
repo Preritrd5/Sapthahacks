@@ -127,13 +127,14 @@ function ImportPage() {
       setExistingTeamsList(existingTeams);
 
       const initialMapping = createDefaultColumnMapping(headers);
+      const allHeaders = Object.keys(initialMapping);
       setRawRecords(raw);
-      setDetectedHeaders(headers);
+      setDetectedHeaders(allHeaders);
       setColumnMapping(initialMapping);
 
       // Automatically transition to Column Mapping step
       setActiveStep("mapping");
-      toast.info(`Detected ${headers.length} Excel column(s). Review and confirm field mappings.`);
+      toast.info(`Detected ${headers.length} spreadsheet column(s) with complete 4-member roster support.`);
     } catch (e) {
       toast.error(`Could not read Excel file: ${(e as Error).message}`);
     }
@@ -546,7 +547,7 @@ function ImportPage() {
           <Magnetic strength={4}>
             <Button variant="outline" onClick={generateTeamImportTemplate} className="gap-2">
               <Download className="size-4" />
-              Download Excel Template (.xlsx)
+              Download 4-Member Excel Template (.xlsx)
             </Button>
           </Magnetic>
           <Magnetic strength={4}>
@@ -1198,36 +1199,50 @@ function ImportPage() {
                           )}
                         </td>
 
-                        {/* Team Members */}
-                        <td className="p-3 align-top text-xs min-w-56">
-                          <div className="flex items-center gap-1 text-muted-foreground font-medium mb-1.5">
-                            <Users className="size-3.5" />
-                            <span>{r.members.length} Member(s)</span>
-                          </div>
-                          {r.members.length > 0 ? (
-                            <div className="space-y-1">
-                              {r.members.map((m, mIdx) => (
-                                <div
-                                  key={mIdx}
-                                  className="flex flex-col text-[11px] bg-background/60 p-1.5 rounded-lg border border-border/50"
-                                >
-                                  <div className="font-semibold text-foreground flex items-center justify-between">
-                                    <span>
-                                      {mIdx === 0 ? "1. (Lead) " : `${mIdx + 1}. `}
-                                      {m.name}
-                                    </span>
-                                  </div>
-                                  {m.email && (
-                                    <span className="text-muted-foreground font-mono text-[10px] truncate">
-                                      {m.email}
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
+                        {/* Team Members: Explicit 4-Member Roster View */}
+                        <td className="p-3 align-top text-xs min-w-60">
+                          <div className="flex items-center justify-between text-muted-foreground font-medium mb-1.5">
+                            <div className="flex items-center gap-1">
+                              <Users className="size-3.5" />
+                              <span>{r.members.length} of 4 Member(s)</span>
                             </div>
-                          ) : (
-                            <em className="text-rose-500">No members mapped</em>
-                          )}
+                            <span className="text-[10px] text-muted-foreground/80 font-mono">
+                              {r.members.length >= 2 ? "✓ Valid Roster" : "Lead Required"}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {r.members.map((m, mIdx) => (
+                              <div
+                                key={mIdx}
+                                className="flex flex-col text-[11px] bg-background/60 p-1.5 rounded-lg border border-border/50"
+                              >
+                                <div className="font-semibold text-foreground flex items-center justify-between">
+                                  <span>
+                                    {mIdx === 0 ? "1. (Lead) " : `${mIdx + 1}. `}
+                                    {m.name}
+                                  </span>
+                                </div>
+                                {m.email && (
+                                  <span className="text-muted-foreground font-mono text-[10px] truncate">
+                                    {m.email}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                            {/* Explicit slots for unpopulated optional members so 4-member capacity is 100% visible */}
+                            {r.members.length < 4 &&
+                              Array.from({ length: 4 - r.members.length }).map((_, idx) => {
+                                const slotNum = r.members.length + idx + 1;
+                                return (
+                                  <div
+                                    key={`empty-${slotNum}`}
+                                    className="flex items-center justify-between text-[10px] text-muted-foreground/60 bg-muted/15 px-2 py-1 rounded border border-dashed border-border/40 font-mono"
+                                  >
+                                    <span>{slotNum}. Member {slotNum} (Optional — unassigned)</span>
+                                  </div>
+                                );
+                              })}
+                          </div>
                         </td>
 
                         {/* Custom Metadata Column (if mapped) */}
