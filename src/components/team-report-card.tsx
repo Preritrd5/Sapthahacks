@@ -125,6 +125,12 @@ function ScorecardDocument({
             <div className="text-[6.8pt] font-bold uppercase tracking-wider text-slate-500">Team Name</div>
             <div className="font-display text-[9.5pt] font-bold text-slate-900 mt-0.5 leading-snug truncate">{team.name}</div>
             <div className="text-[7pt] text-slate-600 font-mono mt-0.5 break-all">{team.email}</div>
+            {team.members && team.members.length > 0 && (
+              <div className="text-[6.5pt] text-slate-700 mt-1 leading-tight truncate">
+                <span className="font-semibold text-slate-900">Roster ({team.members.length}): </span>
+                {team.members.map((m) => m.name).join(", ")}
+              </div>
+            )}
           </div>
 
           <div className="col-span-2">
@@ -450,6 +456,12 @@ function ScorecardDocument({
           <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Team Name</div>
           <div className="font-display text-lg font-bold text-foreground mt-0.5">{team.name}</div>
           <div className="text-xs text-muted-foreground font-mono mt-0.5 break-all">{team.email}</div>
+          {team.members && team.members.length > 0 && (
+            <div className="text-xs text-foreground/80 mt-1.5 leading-relaxed">
+              <span className="font-semibold text-foreground">Roster ({team.members.length}): </span>
+              {team.members.map((m) => m.name).join(", ")}
+            </div>
+          )}
         </div>
 
         <div className="md:col-span-2">

@@ -348,6 +348,12 @@ function QualifiedDocumentView({
                     <td className="p-2 border-r border-slate-200">
                       <div className="font-bold text-slate-900 text-[12px]">{t.name}</div>
                       <div className="text-[10px] text-slate-500 font-mono truncate">{t.email}</div>
+                      {t.members && t.members.length > 0 && (
+                        <div className="text-[9px] text-slate-600 line-clamp-1 mt-0.5" title={t.members.map((m) => m.name).join(", ")}>
+                          <span className="font-semibold text-slate-700">Roster ({t.members.length}): </span>
+                          {t.members.map((m) => m.name).join(", ")}
+                        </div>
+                      )}
                     </td>
 
                     {/* Project Challenge */}

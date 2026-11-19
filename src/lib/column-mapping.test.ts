@@ -5,6 +5,7 @@ import {
   validateColumnMapping,
   parseRowsWithMapping,
   normalizeHeaderKey,
+  isUnambiguousMapping,
   REQUIRED_PORTAL_FIELDS,
   type ColumnMappingState,
 } from "./column-mapping";
@@ -190,5 +191,180 @@ describe("Dynamic Column Mapping & Selection Engine", () => {
     // Validity
     expect(team.isValid).toBe(true);
     expect(team.status).toBe("ready");
+  });
+
+  it("determines unambiguous mappings accurately", () => {
+    // Recognized portal fields return true
+    expect(isUnambiguousMapping("Team Name", "name")).toBe(true);
+    expect(isUnambiguousMapping("Project Title", "project_title")).toBe(true);
+    expect(isUnambiguousMapping("Member 3 Name", "member_3_name")).toBe(true);
+    expect(isUnambiguousMapping("Member 4 Email", "member_4_email")).toBe(true);
+    expect(isUnambiguousMapping("GitHub URL", "github_url")).toBe(true);
+
+    // Ignored columns and custom metadata return false so manual controls are shown
+    expect(isUnambiguousMapping("Timestamp", "ignore")).toBe(false);
+    expect(isUnambiguousMapping("Custom Department", "custom_metadata")).toBe(false);
+  });
+
+  it("detects and flags duplicate target field conflicts", () => {
+    const conflictMapping: ColumnMappingState = {
+      "Team Name": { targetField: "name", selected: true },
+      "Group Name": { targetField: "name", selected: true }, // DUPLICATE TARGET
+      "Team Email": { targetField: "email", selected: true },
+      "Project Title": { targetField: "project_title", selected: true },
+      "Project Description": { targetField: "project_description", selected: true },
+      "Member 1 Name": { targetField: "member_1_name", selected: true },
+      "Member 2 Name": { targetField: "member_2_name", selected: true },
+      "GitHub Repo": { targetField: "github_url", selected: true },
+    };
+
+    const val = validateColumnMapping(conflictMapping);
+    expect(val.isValid).toBe(false);
+    expect(val.duplicateFieldMappings.length).toBe(1);
+    expect(val.duplicateFieldMappings[0]?.targetField).toBe("name");
+    expect(val.duplicateFieldMappings[0]?.headers).toEqual(["Team Name", "Group Name"]);
+  });
+
+  it("supports four team members end-to-end with validation", () => {
+    const raw4Member = [
+      {
+        "Team Name": "Quantum Builders",
+        "Team Email": "quantum@example.com",
+        "Project Title": "Quantum Cryptography Suite",
+        "Project Description": "Post-quantum cryptographic key exchange and lattice analysis.",
+        "GitHub URL": "https://github.com/quantum/suite",
+        "Website URL": "https://quantum-suite.dev",
+        "Member 1 Name": "Alice Smith",
+        "Member 1 Email": "alice@example.com",
+        "Member 2 Name": "Bob Jones",
+        "Member 2 Email": "bob@example.com",
+        "Member 3 Name": "Charlie Brown",
+        "Member 3 Email": "charlie@example.com",
+        "Member 4 Name": "Dana Scully",
+        "Member 4 Email": "dana@example.com",
+      },
+    ];
+
+    const defaultMapping = createDefaultColumnMapping(Object.keys(raw4Member[0]!));
+    const parsed = parseRowsWithMapping(raw4Member, defaultMapping, []);
+
+    expect(parsed.length).toBe(1);
+    const team = parsed[0]!;
+    expect(team.isValid).toBe(true);
+    expect(team.status).toBe("ready");
+    expect(team.members.length).toBe(4);
+    expect(team.members[0]).toEqual({ name: "Alice Smith", email: "alice@example.com" });
+    expect(team.members[1]).toEqual({ name: "Bob Jones", email: "bob@example.com" });
+    expect(team.members[2]).toEqual({ name: "Charlie Brown", email: "charlie@example.com" });
+    expect(team.members[3]).toEqual({ name: "Dana Scully", email: "dana@example.com" });
+  });
+
+  it("handles optional Member 3 and Member 4 fields when left empty", () => {
+    const raw2Member = [
+      {
+        "Team Name": "Duo Coders",
+        "Team Email": "duo@example.com",
+        "Project Title": "Duo Platform",
+        "Project Description": "Lightweight two-person collaborative editor.",
+        "GitHub URL": "https://github.com/duo/editor",
+        "Member 1 Name": "Dev One",
+        "Member 1 Email": "one@example.com",
+        "Member 2 Name": "Dev Two",
+        "Member 2 Email": "two@example.com",
+        "Member 3 Name": "",
+        "Member 3 Email": "",
+        "Member 4 Name": "",
+        "Member 4 Email": "",
+      },
+    ];
+
+    const defaultMapping = createDefaultColumnMapping(Object.keys(raw2Member[0]!));
+    const parsed = parseRowsWithMapping(raw2Member, defaultMapping, []);
+
+    expect(parsed.length).toBe(1);
+    const team = parsed[0]!;
+    expect(team.isValid).toBe(true);
+    expect(team.status).toBe("ready");
+    expect(team.members.length).toBe(2);
+    expect(team.issues.length).toBe(0);
+  });
+
+  it("flags incomplete member information when email is given without name", () => {
+    const incompleteMemberRow = [
+      {
+        "Team Name": "Glitch Team",
+        "Team Email": "glitch@example.com",
+        "Project Title": "Bug Tracker",
+        "Project Description": "Automated regression tracker.",
+        "GitHub URL": "https://github.com/glitch/tracker",
+        "Member 1 Name": "Lead Person",
+        "Member 1 Email": "lead@example.com",
+        "Member 2 Name": "Second Person",
+        "Member 2 Email": "second@example.com",
+        "Member 3 Name": "", // EMPTY NAME
+        "Member 3 Email": "ghost-member3@example.com", // BUT EMAIL PROVIDED
+      },
+    ];
+
+    const mapping = createDefaultColumnMapping(Object.keys(incompleteMemberRow[0]!));
+    const parsed = parseRowsWithMapping(incompleteMemberRow, mapping, []);
+
+    expect(parsed.length).toBe(1);
+    const team = parsed[0]!;
+    expect(team.isValid).toBe(false);
+    expect(team.status).toBe("invalid");
+    expect(team.issues.some((issue) => issue.includes("Member 3 name is missing"))).toBe(true);
+  });
+
+  it("flags duplicate member emails within the same team", () => {
+    const duplicateEmailRow = [
+      {
+        "Team Name": "Duplicate Squad",
+        "Team Email": "squad@example.com",
+        "Project Title": "Identity Verifier",
+        "Project Description": "Identity and access management.",
+        "GitHub URL": "https://github.com/squad/iam",
+        "Member 1 Name": "Person One",
+        "Member 1 Email": "shared@example.com",
+        "Member 2 Name": "Person Two",
+        "Member 2 Email": "shared@example.com", // DUPLICATE EMAIL
+      },
+    ];
+
+    const mapping = createDefaultColumnMapping(Object.keys(duplicateEmailRow[0]!));
+    const parsed = parseRowsWithMapping(duplicateEmailRow, mapping, []);
+
+    expect(parsed.length).toBe(1);
+    const team = parsed[0]!;
+    expect(team.isValid).toBe(false);
+    expect(team.status).toBe("invalid");
+    expect(team.issues.some((issue) => issue.includes("Duplicate member email"))).toBe(true);
+  });
+
+  it("allows administrators to manually correct an auto-detected mapping", () => {
+    const rawData = [
+      {
+        "Team Name": "Flexi Team",
+        "Team Email": "flexi@example.com",
+        "Project Title": "Flexi Portal",
+        "Project Description": "Extensible portal system.",
+        "GitHub URL": "https://github.com/flexi/portal",
+        "Member 1 Name": "Solo Dev",
+        "Member 2 Name": "Co Dev",
+        "Department Link": "https://flexi.edu/dept",
+      },
+    ];
+
+    const mapping = createDefaultColumnMapping(Object.keys(rawData[0]!));
+    // Default auto-detects "Department Link" as custom_metadata
+    expect(mapping["Department Link"]?.targetField).toBe("custom_metadata");
+
+    // Administrator manually remaps "Department Link" to "website_url"
+    mapping["Department Link"] = { targetField: "website_url", selected: true };
+
+    const parsed = parseRowsWithMapping(rawData, mapping, []);
+    expect(parsed.length).toBe(1);
+    expect(parsed[0]?.website_url).toBe("https://flexi.edu/dept");
+    expect(parsed[0]?.customMetadata["Department Link"]).toBeUndefined();
   });
 });

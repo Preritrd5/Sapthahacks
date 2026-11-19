@@ -2,7 +2,7 @@
  * INNOVEDGE Assessor Platform — Dynamic Excel Column Mapping & Selection Engine
  * 
  * Provides type-safe definitions, automated header matching, required field enforcement,
- * column mapping state management, and parsed row generation for spreadsheet imports.
+ * duplicate collision detection, column mapping state management, and parsed row generation.
  */
 
 export type PortalFieldId =
@@ -140,7 +140,18 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     category: "members",
     required: true,
     description: "Primary student coordinator / team leader name",
-    aliases: ["member1name", "member1", "member_1_name", "member_1", "leadername", "leadname", "teammember1", "teammember1name"],
+    aliases: [
+      "member1name",
+      "member1",
+      "member_1_name",
+      "member_1",
+      "leadername",
+      "leadname",
+      "teammember1",
+      "teammember1name",
+      "student1name",
+      "student1",
+    ],
   },
   {
     id: "member_1_email",
@@ -148,7 +159,16 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     category: "members",
     required: false,
     description: "Team leader email address",
-    aliases: ["member1email", "member1mail", "member_1_email", "member_1mail", "teammember1email", "leaderemail", "leademail"],
+    aliases: [
+      "member1email",
+      "member1mail",
+      "member_1_email",
+      "member_1mail",
+      "teammember1email",
+      "leaderemail",
+      "leademail",
+      "student1email",
+    ],
   },
   {
     id: "member_2_name",
@@ -156,7 +176,16 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     category: "members",
     required: true,
     description: "Second team member name",
-    aliases: ["member2name", "member2", "member_2_name", "member_2", "teammember2", "teammember2name"],
+    aliases: [
+      "member2name",
+      "member2",
+      "member_2_name",
+      "member_2",
+      "teammember2",
+      "teammember2name",
+      "student2name",
+      "student2",
+    ],
   },
   {
     id: "member_2_email",
@@ -164,7 +193,14 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     category: "members",
     required: false,
     description: "Second team member email",
-    aliases: ["member2email", "member2mail", "member_2_email", "member_2mail", "teammember2email"],
+    aliases: [
+      "member2email",
+      "member2mail",
+      "member_2_email",
+      "member_2mail",
+      "teammember2email",
+      "student2email",
+    ],
   },
   {
     id: "member_3_name",
@@ -172,7 +208,18 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     category: "members",
     required: false,
     description: "Third team member name",
-    aliases: ["member3name", "member3", "member_3_name", "member_3", "teammember3", "teammember3name"],
+    aliases: [
+      "member3name",
+      "member3",
+      "member_3_name",
+      "member_3",
+      "teammember3",
+      "teammember3name",
+      "student3name",
+      "student3",
+      "3rdmembername",
+      "3rdmember",
+    ],
   },
   {
     id: "member_3_email",
@@ -180,7 +227,15 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     category: "members",
     required: false,
     description: "Third team member email",
-    aliases: ["member3email", "member3mail", "member_3_email", "member_3mail", "teammember3email"],
+    aliases: [
+      "member3email",
+      "member3mail",
+      "member_3_email",
+      "member_3mail",
+      "teammember3email",
+      "student3email",
+      "3rdmemberemail",
+    ],
   },
   {
     id: "member_4_name",
@@ -188,7 +243,18 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     category: "members",
     required: false,
     description: "Fourth team member name",
-    aliases: ["member4name", "member4", "member_4_name", "member_4", "teammember4", "teammember4name"],
+    aliases: [
+      "member4name",
+      "member4",
+      "member_4_name",
+      "member_4",
+      "teammember4",
+      "teammember4name",
+      "student4name",
+      "student4",
+      "4thmembername",
+      "4thmember",
+    ],
   },
   {
     id: "member_4_email",
@@ -196,7 +262,15 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     category: "members",
     required: false,
     description: "Fourth team member email",
-    aliases: ["member4email", "member4mail", "member_4_email", "member_4mail", "teammember4email"],
+    aliases: [
+      "member4email",
+      "member4mail",
+      "member_4_email",
+      "member_4mail",
+      "teammember4email",
+      "student4email",
+      "4thmemberemail",
+    ],
   },
 
   // 4. Special Mappings
@@ -246,6 +320,19 @@ export function detectFieldForHeader(header: string): PortalFieldId {
     }
   }
 
+  // Regex-based robust member matching
+  if (/member.*1.*(email|mail)/i.test(header) || /1.*member.*(email|mail)/i.test(header) || /lead.*(email|mail)/i.test(header)) return "member_1_email";
+  if (/member.*1/i.test(header) || /1.*member/i.test(header) || /leader/i.test(header) || /leadname/i.test(header)) return "member_1_name";
+
+  if (/member.*2.*(email|mail)/i.test(header) || /2.*member.*(email|mail)/i.test(header)) return "member_2_email";
+  if (/member.*2/i.test(header) || /2.*member/i.test(header)) return "member_2_name";
+
+  if (/member.*3.*(email|mail)/i.test(header) || /3.*member.*(email|mail)/i.test(header)) return "member_3_email";
+  if (/member.*3/i.test(header) || /3.*member/i.test(header)) return "member_3_name";
+
+  if (/member.*4.*(email|mail)/i.test(header) || /4.*member.*(email|mail)/i.test(header)) return "member_4_email";
+  if (/member.*4/i.test(header) || /4.*member/i.test(header)) return "member_4_name";
+
   // Secondary substring / keyword matching for common variations
   if (norm.includes("teamname") || norm === "team") return "name";
   if (norm.includes("projecttitle") || norm === "title") return "project_title";
@@ -264,6 +351,17 @@ export function detectFieldForHeader(header: string): PortalFieldId {
 
   // If unrecognized, default to custom_metadata
   return "custom_metadata";
+}
+
+/**
+ * Checks if an Excel header has an unambiguous, automatic match to a portal field
+ */
+export function isUnambiguousMapping(header: string, targetField: PortalFieldId): boolean {
+  if (targetField === "ignore" || targetField === "custom_metadata") return false;
+  const norm = normalizeHeaderKey(header);
+  const def = PORTAL_FIELD_MAP.get(targetField);
+  if (!def) return false;
+  return def.aliases.includes(norm) || detectFieldForHeader(header) === targetField;
 }
 
 export interface ColumnMappingState {
@@ -301,16 +399,23 @@ export function createDefaultColumnMapping(detectedHeaders: string[]): ColumnMap
   return state;
 }
 
+export interface DuplicateMappingConflict {
+  targetField: PortalFieldId;
+  fieldLabel: string;
+  headers: string[];
+}
+
 /**
- * Validates whether all mandatory portal fields are mapped to a selected column
+ * Validates whether all mandatory portal fields are mapped and detects duplicate mappings
  */
 export function validateColumnMapping(mapping: ColumnMappingState): {
   isValid: boolean;
   missingRequiredFields: PortalFieldDef[];
+  duplicateFieldMappings: DuplicateMappingConflict[];
   mappedFieldCount: number;
   selectedColumnCount: number;
 } {
-  const activeTargets = new Set<PortalFieldId>();
+  const targetToHeaders = new Map<PortalFieldId, string[]>();
   let selectedColumnCount = 0;
 
   for (const header in mapping) {
@@ -318,19 +423,38 @@ export function validateColumnMapping(mapping: ColumnMappingState): {
     if (item && item.selected && item.targetField !== "ignore") {
       selectedColumnCount++;
       if (item.targetField !== "custom_metadata") {
-        activeTargets.add(item.targetField);
+        const list = targetToHeaders.get(item.targetField) ?? [];
+        list.push(header);
+        targetToHeaders.set(item.targetField, list);
       }
     }
   }
 
+  // Check missing mandatory fields
   const missingRequiredFields = REQUIRED_PORTAL_FIELDS.filter(
-    (req) => !activeTargets.has(req.id)
+    (req) => !targetToHeaders.has(req.id)
   );
 
+  // Check duplicate target mappings
+  const duplicateFieldMappings: DuplicateMappingConflict[] = [];
+  for (const [target, headers] of targetToHeaders.entries()) {
+    if (headers.length > 1) {
+      const fieldDef = PORTAL_FIELD_MAP.get(target);
+      duplicateFieldMappings.push({
+        targetField: target,
+        fieldLabel: fieldDef?.label ?? target,
+        headers,
+      });
+    }
+  }
+
+  const isValid = missingRequiredFields.length === 0 && duplicateFieldMappings.length === 0;
+
   return {
-    isValid: missingRequiredFields.length === 0,
+    isValid,
     missingRequiredFields,
-    mappedFieldCount: activeTargets.size,
+    duplicateFieldMappings,
+    mappedFieldCount: targetToHeaders.size,
     selectedColumnCount,
   };
 }
@@ -427,8 +551,11 @@ export function parseRowsWithMapping(
     const rawPdf = getValue("pdf_url");
     const pdf_url = rawPdf ? sanitizeUrl(rawPdf) : "";
 
-    // Extract members based on mapped member columns
+    const issues: string[] = [];
     const members: ParsedTeamMember[] = [];
+    const memberEmails: string[] = [];
+
+    // Extract all 4 member slots
     for (let i = 1; i <= 4; i++) {
       const nameKey: PortalFieldId = `member_${i}_name` as PortalFieldId;
       const emailKey: PortalFieldId = `member_${i}_email` as PortalFieldId;
@@ -436,8 +563,41 @@ export function parseRowsWithMapping(
       const mName = getValue(nameKey);
       const mEmail = getValue(emailKey);
 
+      // Incomplete member check: email provided without name
+      if (!mName && mEmail) {
+        issues.push(`Member ${i} email provided (${mEmail}) but Member ${i} name is missing`);
+      }
+
       if (mName) {
+        if (mEmail) {
+          if (!EMAIL_REGEX.test(mEmail)) {
+            issues.push(`Member ${i} (${mName}) has an invalid email format (${mEmail})`);
+          } else {
+            const emailLower = mEmail.toLowerCase().trim();
+            if (memberEmails.includes(emailLower)) {
+              issues.push(`Duplicate member email (${mEmail}) used multiple times within the team`);
+            } else {
+              memberEmails.push(emailLower);
+            }
+          }
+        }
         members.push({ name: mName, email: mEmail });
+      }
+    }
+
+    // Support delimited string in a single 'Members' column if individual columns not found (legacy fallback)
+    if (members.length === 0) {
+      const legacyHeader = Object.keys(r).find((k) =>
+        ["members", "teammembers", "allmembers", "roster"].includes(normalizeHeaderKey(k))
+      );
+      if (legacyHeader && r[legacyHeader]) {
+        const parts = String(r[legacyHeader]).split(/[;|]/);
+        parts.slice(0, 4).forEach((part) => {
+          const [n, e] = part.split(/[<>,]/).map((s) => s.trim());
+          if (n) {
+            members.push({ name: n, email: e ?? "" });
+          }
+        });
       }
     }
 
@@ -449,8 +609,6 @@ export function parseRowsWithMapping(
         customMetadata[h] = val;
       }
     }
-
-    const issues: string[] = [];
 
     // Validation rules
     if (!teamName) issues.push("Missing team name");
@@ -475,21 +633,14 @@ export function parseRowsWithMapping(
       issues.push("Invalid website URL");
     }
 
+    // Member 1 (Lead) is required
     if (!members.length) {
-      issues.push("At least 1 member (Lead) is required");
-    } else if (members.length < 2 && selectedPortalFields.has("member_2_name")) {
-      issues.push("Member 2 name is required");
+      issues.push("Member 1 (Lead) is required");
     }
 
-    members.forEach((m, mIdx) => {
-      if (m.email && !EMAIL_REGEX.test(m.email)) {
-        issues.push(`Member ${mIdx + 1} (${m.name}) has an invalid email`);
-      }
-    });
-
-    const memberEmails = members.map((m) => m.email.toLowerCase()).filter(Boolean);
-    if (new Set(memberEmails).size !== memberEmails.length) {
-      issues.push("Duplicate member email within team");
+    // Member 2 is required if Member 2 Name column was selected in mapping
+    if (selectedPortalFields.has("member_2_name") && members.length < 2) {
+      issues.push("Member 2 Name is required");
     }
 
     // Duplicate checks

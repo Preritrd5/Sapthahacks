@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   Check,
   AlertTriangle,
@@ -8,6 +8,8 @@ import {
   Sparkles,
   CheckCircle2,
   XCircle,
+  Pencil,
+  AlertCircle,
   HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,7 @@ import {
   PORTAL_FIELD_MAP,
   createDefaultColumnMapping,
   validateColumnMapping,
+  isUnambiguousMapping,
   type ColumnMappingState,
   type PortalFieldId,
 } from "@/lib/column-mapping";
@@ -49,7 +52,21 @@ export function ExcelColumnMapper({
   onConfirm,
   onCancel,
 }: ExcelColumnMapperProps) {
-  const validation = validateColumnMapping(mapping);
+  // Track headers that administrator is actively editing
+  const [editingHeaders, setEditingHeaders] = useState<Set<string>>(new Set());
+
+  const validation = useMemo(() => validateColumnMapping(mapping), [mapping]);
+
+  // Map of targetField -> list of headers with conflicts
+  const conflictHeaderSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const conflict of validation.duplicateFieldMappings) {
+      for (const h of conflict.headers) {
+        set.add(h);
+      }
+    }
+    return set;
+  }, [validation.duplicateFieldMappings]);
 
   const toggleColumnSelection = (header: string) => {
     const current = mapping[header];
@@ -74,6 +91,18 @@ export function ExcelColumnMapper({
         targetField,
         selected: targetField !== "ignore",
       },
+    });
+  };
+
+  const startEditing = (header: string) => {
+    setEditingHeaders((prev) => new Set(prev).add(header));
+  };
+
+  const stopEditing = (header: string) => {
+    setEditingHeaders((prev) => {
+      const next = new Set(prev);
+      next.delete(header);
+      return next;
     });
   };
 
@@ -102,6 +131,7 @@ export function ExcelColumnMapper({
   };
 
   const handleAutoMap = () => {
+    setEditingHeaders(new Set());
     onMappingChange(createDefaultColumnMapping(detectedHeaders));
   };
 
@@ -128,8 +158,8 @@ export function ExcelColumnMapper({
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Select which Excel spreadsheet columns to import and map them to platform fields.
-              Mandatory portal fields are indicated and strictly enforced.
+              Recognized columns are automatically mapped. Unrecognized columns allow manual selection.
+              All four team members and custom metadata are supported.
             </p>
           </div>
 
@@ -161,8 +191,31 @@ export function ExcelColumnMapper({
           </div>
         </div>
 
-        {/* Validation Status Notice */}
-        {!validation.isValid ? (
+        {/* Conflict Warning: Duplicate target mappings */}
+        {validation.duplicateFieldMappings.length > 0 && (
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3.5 text-xs text-rose-700 dark:text-rose-400 flex items-start gap-2.5">
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <div className="font-semibold">
+                Duplicate Field Mappings Detected ({validation.duplicateFieldMappings.length})
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                Each portal field can only be mapped to one Excel column. Please resolve the following duplicates:
+              </p>
+              <div className="space-y-1 pt-1">
+                {validation.duplicateFieldMappings.map((c) => (
+                  <div key={c.targetField} className="text-[11px] font-mono">
+                    • <strong>{c.fieldLabel}:</strong> mapped to columns{" "}
+                    <span className="underline">{c.headers.join(", ")}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Validation Status Notice: Missing mandatory fields */}
+        {validation.missingRequiredFields.length > 0 ? (
           <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2.5">
             <AlertTriangle className="size-4 shrink-0 mt-0.5" />
             <div>
@@ -179,25 +232,25 @@ export function ExcelColumnMapper({
                     variant="destructive"
                     className="text-[10px] px-2 py-0.5 font-semibold"
                   >
-                    {f.label}
+                    {f.label} *
                   </Badge>
                 ))}
               </div>
             </div>
           </div>
-        ) : (
+        ) : validation.duplicateFieldMappings.length === 0 ? (
           <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-400 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="size-4 shrink-0 text-emerald-500" />
               <span className="font-medium">
-                All mandatory portal fields are mapped and ready for preview.
+                All columns mapped cleanly. Ready to preview and validate submissions.
               </span>
             </div>
             <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
               Ready to Preview &rarr;
             </span>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Column Mapping Table */}
@@ -208,7 +261,7 @@ export function ExcelColumnMapper({
               <th className="p-3 pl-4 w-12 text-center">Include</th>
               <th className="p-3">Detected Excel Column</th>
               <th className="p-3 max-w-xs">Sample Value (Row 1)</th>
-              <th className="p-3 w-72">Target Platform Field</th>
+              <th className="p-3 w-80">Target Platform Field</th>
               <th className="p-3 pr-4 text-center w-36">Field Type</th>
             </tr>
           </thead>
@@ -219,11 +272,24 @@ export function ExcelColumnMapper({
               const sampleVal = sampleRow ? sampleRow[header] : undefined;
               const isRequiredField = targetDef?.required ?? false;
 
+              // Column is recognized unambiguously if matched to a known portal field
+              const isRecognized =
+                item.targetField !== "custom_metadata" &&
+                item.targetField !== "ignore" &&
+                isUnambiguousMapping(header, item.targetField);
+
+              const hasConflict = conflictHeaderSet.has(header);
+              const isEditing = editingHeaders.has(header) || hasConflict || (!isRecognized && item.selected);
+
               return (
                 <tr
                   key={header}
                   className={`hover:bg-muted/30 transition-colors ${
-                    item.selected ? "bg-primary/[0.02]" : "opacity-60 bg-muted/10"
+                    hasConflict
+                      ? "bg-rose-500/10"
+                      : item.selected
+                      ? "bg-primary/[0.02]"
+                      : "opacity-60 bg-muted/10"
                   }`}
                 >
                   {/* Selection Checkbox */}
@@ -237,15 +303,23 @@ export function ExcelColumnMapper({
 
                   {/* Excel Column Header */}
                   <td className="p-3 align-middle font-medium text-foreground">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <span className="truncate" title={header}>
                         {header}
                       </span>
+                      {hasConflict && (
+                        <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4 shrink-0">
+                          Conflict
+                        </Badge>
+                      )}
                     </div>
                   </td>
 
                   {/* Sample Value */}
-                  <td className="p-3 align-middle text-xs font-mono text-muted-foreground max-w-xs truncate" title={sampleVal || "—"}>
+                  <td
+                    className="p-3 align-middle text-xs font-mono text-muted-foreground max-w-xs truncate"
+                    title={sampleVal || "—"}
+                  >
                     {sampleVal ? (
                       sampleVal
                     ) : (
@@ -253,61 +327,105 @@ export function ExcelColumnMapper({
                     )}
                   </td>
 
-                  {/* Target Platform Field Mapping Dropdown */}
+                  {/* Target Platform Field: Simple Label if Recognized, Dropdown if Editing/Unknown */}
                   <td className="p-3 align-middle">
-                    <Select
-                      value={item.targetField}
-                      onValueChange={(val: PortalFieldId) => setTargetField(header, val)}
-                    >
-                      <SelectTrigger className="h-8 text-xs bg-background/80">
-                        <SelectValue placeholder="Map to field..." />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-80">
-                        <SelectGroup>
-                          <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground">
-                            Core Team Info
-                          </SelectLabel>
-                          {coreFields.map((f) => (
-                            <SelectItem key={f.id} value={f.id} className="text-xs">
-                              {f.label} {f.required && "*"}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
+                    {!isEditing && targetDef && item.selected ? (
+                      // Clean field label for unambiguous recognized mappings
+                      <div className="flex items-center justify-between gap-2 bg-muted/20 px-2.5 py-1.5 rounded-lg border border-border/40">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+                          <span className="font-semibold text-foreground text-xs truncate">
+                            {targetDef.label}
+                          </span>
+                          {isRequiredField && (
+                            <span className="text-amber-500 font-bold text-xs" title="Mandatory portal field">
+                              *
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEditing(header)}
+                          className="h-6 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 px-2 gap-1 shrink-0"
+                          title="Change mapping for this column"
+                        >
+                          <Pencil className="size-3" />
+                          <span>Edit</span>
+                        </Button>
+                      </div>
+                    ) : (
+                      // Interactive Select Dropdown when editing or unrecognized
+                      <div className="flex items-center gap-1.5">
+                        <Select
+                          value={item.targetField}
+                          onValueChange={(val: PortalFieldId) => setTargetField(header, val)}
+                        >
+                          <SelectTrigger className="h-8 text-xs bg-background/80">
+                            <SelectValue placeholder="Map to field..." />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-80">
+                            <SelectGroup>
+                              <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground">
+                                Core Team Info
+                              </SelectLabel>
+                              {coreFields.map((f) => (
+                                <SelectItem key={f.id} value={f.id} className="text-xs">
+                                  {f.label} {f.required && "*"}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
 
-                        <SelectGroup>
-                          <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground">
-                            Team Members (1–4)
-                          </SelectLabel>
-                          {memberFields.map((f) => (
-                            <SelectItem key={f.id} value={f.id} className="text-xs">
-                              {f.label} {f.required && "*"}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
+                            <SelectGroup>
+                              <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground">
+                                Team Members (1–4)
+                              </SelectLabel>
+                              {memberFields.map((f) => (
+                                <SelectItem key={f.id} value={f.id} className="text-xs">
+                                  {f.label} {f.required && "*"}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
 
-                        <SelectGroup>
-                          <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground">
-                            Links &amp; Artifacts
-                          </SelectLabel>
-                          {linkFields.map((f) => (
-                            <SelectItem key={f.id} value={f.id} className="text-xs">
-                              {f.label} {f.required && "*"}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
+                            <SelectGroup>
+                              <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground">
+                                Links &amp; Artifacts
+                              </SelectLabel>
+                              {linkFields.map((f) => (
+                                <SelectItem key={f.id} value={f.id} className="text-xs">
+                                  {f.label} {f.required && "*"}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
 
-                        <SelectGroup>
-                          <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground">
-                            Special Mappings
-                          </SelectLabel>
-                          {specialFields.map((f) => (
-                            <SelectItem key={f.id} value={f.id} className="text-xs">
-                              {f.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                            <SelectGroup>
+                              <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground">
+                                Special Mappings
+                              </SelectLabel>
+                              {specialFields.map((f) => (
+                                <SelectItem key={f.id} value={f.id} className="text-xs">
+                                  {f.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+
+                        {editingHeaders.has(header) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => stopEditing(header)}
+                            className="h-8 px-2 text-xs text-emerald-600 border-emerald-500/40 hover:bg-emerald-500/10 shrink-0"
+                            title="Done editing mapping"
+                          >
+                            <Check className="size-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </td>
 
                   {/* Status Badge */}
@@ -316,16 +434,29 @@ export function ExcelColumnMapper({
                       <Badge variant="outline" className="text-[10px] opacity-70">
                         Ignored
                       </Badge>
+                    ) : hasConflict ? (
+                      <Badge variant="destructive" className="text-[10px]">
+                        Duplicate Mapping
+                      </Badge>
                     ) : item.targetField === "custom_metadata" ? (
-                      <Badge variant="secondary" className="text-[10px] bg-sky-500/15 text-sky-600 border-sky-500/30">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] bg-sky-500/15 text-sky-600 border-sky-500/30"
+                      >
                         Custom Metadata
                       </Badge>
                     ) : isRequiredField ? (
-                      <Badge variant="default" className="text-[10px] bg-amber-500/20 text-amber-600 border-amber-500/40">
+                      <Badge
+                        variant="default"
+                        className="text-[10px] bg-amber-500/20 text-amber-600 border-amber-500/40"
+                      >
                         Required *
                       </Badge>
                     ) : (
-                      <Badge variant="secondary" className="text-[10px] bg-emerald-500/15 text-emerald-600 border-emerald-500/30">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+                      >
                         Mapped
                       </Badge>
                     )}
