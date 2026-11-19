@@ -8,6 +8,7 @@ import {
   getPersistentTeams,
   savePersistentTeams,
   upsertPersistentTeam,
+  getPersistentMembers,
 } from "./team-store";
 import { useAuth } from "./auth-context";
 
@@ -87,7 +88,18 @@ export const useSettings = () =>
     },
   });
 
+export type TeamMember = {
+  id?: string | undefined;
+  name: string;
+  email: string | null;
+  position?: number | undefined;
+};
+
 export type TeamRow = Team & {
+  college?: string | undefined;
+  track?: string | undefined;
+  problem_statement?: string | undefined;
+  members?: TeamMember[] | undefined;
   evals: Partial<Record<Component, Evaluation>>;
   aiFinal: number | null;
   approvedFinal: number | null;
@@ -95,6 +107,43 @@ export type TeamRow = Team & {
   missing: Component[];
   overall: string;
 };
+
+export function extractTeamMetadata(t: { remarks?: string | null; email?: string | null; project_title?: string | null }) {
+  let college = "";
+  let track = "";
+  let psCode = "";
+
+  if (t.remarks) {
+    const colMatch = t.remarks.match(/College:\s*([^|]+)/i);
+    if (colMatch?.[1]) college = colMatch[1].trim();
+
+    const trackMatch = t.remarks.match(/Track:\s*([^|]+)/i);
+    if (trackMatch?.[1]) track = trackMatch[1].trim();
+
+    const psMatch = t.remarks.match(/PS:\s*([^|]+)/i);
+    if (psMatch?.[1]) psCode = psMatch[1].trim();
+  }
+
+  // Fallback college from email domain
+  if (!college && t.email) {
+    const emailLower = t.email.toLowerCase();
+    if (emailLower.includes("sapthagiri")) {
+      college = "Sapthagiri College of Engineering";
+    } else if (emailLower.includes("bmsce")) {
+      college = "BMS College of Engineering";
+    } else if (emailLower.includes("pes.edu")) {
+      college = "PES University";
+    }
+  }
+
+  // Fallback PS from project_title "[PS-01] ..."
+  if (!psCode && t.project_title) {
+    const codeMatch = t.project_title.match(/^\[(PS-\d+|[^\]]+)\]/i);
+    if (codeMatch?.[1]) psCode = codeMatch[1].trim();
+  }
+
+  return { college, track, psCode };
+}
 
 export function overallStatus(t: Team, evals: Partial<Record<Component, Evaluation>>) {
   if (t.final_status === "approved") return "approved";
@@ -115,13 +164,21 @@ export const useTeamRows = (_explicitUserId?: string | null) => {
       const activeWeights = weights.data ?? DEFAULT_WEIGHTS;
 
       try {
-        const [teams, evals] = await Promise.all([
+        const [teams, evals, membersData] = await Promise.all([
           fetchAll<Team>("teams"),
           fetchAll<Evaluation>("evaluations"),
+          fetchAll<Tables<"team_members">>("team_members").catch(() => []),
         ]);
 
         const byTeam = new Map<string, Evaluation[]>();
         (evals ?? []).forEach((e) => byTeam.set(e.team_id, [...(byTeam.get(e.team_id) ?? []), e]));
+
+        const membersByTeam = new Map<string, TeamMember[]>();
+        (membersData ?? []).forEach((m) => {
+          const list = membersByTeam.get(m.team_id) ?? [];
+          list.push({ id: m.id, name: m.name, email: m.email, position: m.position });
+          membersByTeam.set(m.team_id, list);
+        });
 
         const liveRows = (teams ?? []).map((t): TeamRow => {
           const list = byTeam.get(t.id) ?? [];
@@ -134,8 +191,15 @@ export const useTeamRows = (_explicitUserId?: string | null) => {
           }));
           const ai = weightedFinal(norm, activeWeights, "ai");
           const ap = weightedFinal(norm, activeWeights, "approved");
+          const meta = extractTeamMetadata(t);
+          const teamMembers = membersByTeam.get(t.id) ?? getPersistentMembers(t.id);
+
           return {
             ...t,
+            college: meta.college || undefined,
+            track: meta.track || undefined,
+            problem_statement: meta.psCode || undefined,
+            members: teamMembers,
             evals: ev,
             aiFinal: ai.score,
             approvedFinal: ap.score,

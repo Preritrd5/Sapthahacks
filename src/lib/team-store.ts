@@ -152,15 +152,20 @@ export const INITIAL_MEMBERS: Record<string, { name: string; email: string }[]> 
   "team-alpha-001": [
     { name: "Aarav Sharma", email: "aarav@sapthagiri.edu" },
     { name: "Diya Rao", email: "diya@sapthagiri.edu" },
+    { name: "Vikram Singh", email: "vikram@sapthagiri.edu" },
+    { name: "Neha Gupta", email: "neha@sapthagiri.edu" },
   ],
   "team-beta-002": [
     { name: "Rohan Patel", email: "rohan@sapthagiri.edu" },
     { name: "Ananya Iyer", email: "ananya@sapthagiri.edu" },
     { name: "Kiran V.", email: "kiran@sapthagiri.edu" },
+    { name: "Aditya Roy", email: "aditya@sapthagiri.edu" },
   ],
   "team-gamma-003": [
     { name: "Meera Nair", email: "meera@sapthagiri.edu" },
     { name: "Siddharth Joshi", email: "siddharth@sapthagiri.edu" },
+    { name: "Pooja Hegde", email: "pooja@sapthagiri.edu" },
+    { name: "Varun Teja", email: "varun@sapthagiri.edu" },
   ],
 };
 
@@ -177,6 +182,7 @@ export function getPersistentTeams(userId?: string | null): TeamRow[] {
     if (Array.isArray(parsed)) {
       return parsed.map((t) => ({
         ...t,
+        members: t.members && t.members.length ? t.members : getPersistentMembers(t.id),
         evals: t.evals || {},
         missing: t.missing || [],
         overall: t.overall || "pending",
