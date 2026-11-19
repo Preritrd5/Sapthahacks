@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Users, UserPlus, Upload, ListChecks, ListOrdered, ClipboardCheck, Trophy, FileDown, Settings, ScrollText, LogOut, Loader2, ShieldAlert, Menu, X, Gauge, Lightbulb, CheckCircle2, Sun, Moon,
 } from "lucide-react";
@@ -315,18 +315,7 @@ function Shell({ email, onSignOut }: { email: string; onSignOut: () => void }) {
 
         {/* Page Container with Responsive Padding */}
         <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-5 md:p-8 min-w-0 relative z-10">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={path}
-              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+          <Outlet />
         </main>
       </div>
     </div>
