@@ -11,10 +11,10 @@ import { AnimatedProgress } from "@/components/ui/animated-progress";
 import { StatusBadge, fmt } from "@/components/page-header";
 import { type TeamRow } from "@/lib/queries";
 import { COMPONENTS, COMPONENT_LABEL, type Component } from "@/lib/scoring";
-import { DEFAULT_CRITERIA_MAP, generateDefaultCriteriaScores, type DetailedCriterionScore } from "@/lib/evaluation-engine";
+import { DEFAULT_CRITERIA_MAP, evaluateSingleTeam, type DetailedCriterionScore } from "@/lib/evaluation-engine";
 import { updatePersistentTeam } from "@/lib/team-store";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Github, Globe, CheckCircle2, ShieldCheck, Cpu, Calendar, Sparkles, Zap } from "lucide-react";
+import { FileText, Github, Globe, CheckCircle2, ShieldCheck, Cpu, Calendar, Sparkles, Zap, Loader2 } from "lucide-react";
 
 interface Props {
   team: TeamRow | null;
@@ -26,6 +26,7 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
   const qc = useQueryClient();
   const shouldReduceMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<Component>("pdf");
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
   const currentEval = team?.evals?.[activeTab];
   const { data: dbCriterionScores } = useQuery({
@@ -44,88 +45,19 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
 
   if (!team) return null;
 
-  const handleFillDefaultCriteria = async () => {
-    const p = 84;
-    const g = 88;
-    const w = 85;
-    const finalScore = Number((p * 0.3 + g * 0.4 + w * 0.3).toFixed(1));
-
-    const updatedEvals = { ...team.evals };
-    const comps: { c: Component; score: number }[] = [
-      { c: "pdf", score: p },
-      { c: "github", score: g },
-      { c: "website", score: w },
-    ];
-
+  const handleRunEvaluation = async () => {
+    if (!team || isEvaluating) return;
+    setIsEvaluating(true);
+    toast.info(`Running live evidence-based evaluation for "${team.name}"...`);
     try {
-      for (const { c, score } of comps) {
-        const evalId = updatedEvals[c]?.id || `eval-${team.id}-${c}`;
-        const critScores = generateDefaultCriteriaScores(team.id, c, score);
-
-        updatedEvals[c] = {
-          ...(updatedEvals[c] || {
-            id: evalId,
-            team_id: team.id,
-            component: c,
-            created_at: new Date().toISOString(),
-            max_score: 100,
-          }),
-          status: "completed",
-          ai_score: score,
-          final_score: score,
-          summary: `Benchmark evaluation criteria populated (${score}/100)`,
-          confidence: 0.95,
-          updated_at: new Date().toISOString(),
-        } as any;
-
-        const { data: savedEval } = await supabase.from("evaluations").upsert({
-          team_id: team.id,
-          component: c,
-          status: "completed",
-          final_score: score,
-          ai_score: score,
-          max_score: 100,
-          confidence: 0.95,
-          summary: `Benchmark evaluation criteria populated (${score}/100)`,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "team_id,component" }).select().single();
-
-        if (savedEval?.id) {
-          await supabase.from("criterion_scores").delete().eq("evaluation_id", savedEval.id);
-          await supabase.from("criterion_scores").insert(
-            critScores.map((crit, idx) => ({
-              evaluation_id: savedEval.id,
-              criterion_name: crit.criterion_name,
-              max_marks: crit.max_marks,
-              position: idx + 1,
-              ai_marks: crit.ai_marks,
-              admin_marks: crit.ai_marks,
-              ai_explanation: crit.ai_explanation,
-              ai_evidence: crit.ai_evidence,
-              confidence: crit.confidence,
-            }))
-          );
-        }
-      }
-
-      await supabase.from("teams").update({
-        final_override: finalScore,
-        updated_at: new Date().toISOString(),
-      }).eq("id", team.id);
-    } catch (err) {
-      console.warn("Could not sync benchmark criteria to Supabase:", err);
+      await evaluateSingleTeam(team, [...COMPONENTS], { forceRerun: true });
+      qc.invalidateQueries();
+      toast.success(`Evaluation complete for "${team.name}"!`);
+    } catch (err: any) {
+      toast.error(err?.message || "Evaluation failed");
+    } finally {
+      setIsEvaluating(false);
     }
-
-    updatePersistentTeam(team.id, {
-      evals: updatedEvals,
-      officialFinal: finalScore,
-      aiFinal: finalScore,
-      overall: "completed",
-      updated_at: new Date().toISOString(),
-    });
-
-    qc.invalidateQueries();
-    toast.success(`Populated default criteria for ${team.name} (${finalScore}/100)!`);
   };
 
   // Load criterion scores from authoritative Supabase query or proportional fallback
@@ -144,14 +76,18 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
     }
 
     const evalObj = team.evals?.[c];
-    // Proportional breakdown from defaults
-    const scoreVal = evalObj?.final_score != null ? Number(evalObj.final_score) : 70;
-    const factor = scoreVal / 100;
+    if (!evalObj || evalObj.final_score == null) {
+      return [];
+    }
+
+    // Only generate criteria if an authoritative evaluation exists for this component
+    const scoreVal = Number(evalObj.final_score);
+    const totalMax = DEFAULT_CRITERIA_MAP[c].reduce((acc, cr) => acc + cr.max, 0);
     return DEFAULT_CRITERIA_MAP[c].map((crit, idx) => ({
       criterion_id: `crit-${team.id}-${c}-${idx}`,
       criterion_name: crit.name,
       max_marks: crit.max,
-      ai_marks: Math.max(1, Math.min(crit.max, Math.round(crit.max * factor * (0.88 + (idx % 3) * 0.08) * 2) / 2)),
+      ai_marks: Math.max(0, Math.min(crit.max, Math.round((crit.max / totalMax) * scoreVal * 2) / 2)),
       ai_explanation: crit.explanation,
       ai_evidence: crit.evidence,
       confidence: evalObj?.confidence != null ? Number(evalObj.confidence) : 0.92,
@@ -221,16 +157,25 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
             </div>
           </div>
 
-          {/* Quick Benchmark Action */}
+          {/* Quick Evaluation Action */}
           <div className="flex items-center justify-between pt-2">
-            <span className="text-[11px] text-muted-foreground">Preview & test evaluation rubrics:</span>
+            <span className="text-[11px] text-muted-foreground">Team-isolated rubric assessment:</span>
             <Button
               size="sm"
               variant="outline"
-              onClick={handleFillDefaultCriteria}
+              disabled={isEvaluating}
+              onClick={handleRunEvaluation}
               className="text-xs h-7 gap-1.5 border-primary/30 text-primary hover:bg-primary/10 font-medium"
             >
-              <Zap className="size-3" /> Fill Default Benchmark Criteria (85%)
+              {isEvaluating ? (
+                <>
+                  <Loader2 className="size-3 animate-spin" /> Evaluating Evidence...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-3" /> Re-evaluate Team Rubrics
+                </>
+              )}
             </Button>
           </div>
         </DialogHeader>
@@ -281,9 +226,27 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
                     </div>
                   )}
 
-                  {/* Criteria Cards */}
-                  <div className="space-y-2.5">
-                    {crits.map((crit, index) => {
+                  {/* Criteria Cards or Empty State */}
+                  {crits.length === 0 ? (
+                    <div className="py-8 px-4 text-center rounded-2xl border border-dashed border-border/70 bg-card/30">
+                      <FileText className="size-8 mx-auto mb-2 text-muted-foreground/60" />
+                      <p className="text-xs font-semibold text-foreground">No evaluation completed for this component</p>
+                      <p className="text-[11px] text-muted-foreground mt-1 max-w-sm mx-auto">
+                        This component has not been evaluated yet. Run live evaluation to generate individual rubric scores from this team's submission.
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={handleRunEvaluation}
+                        disabled={isEvaluating}
+                        className="mt-3 h-7 text-xs gap-1.5"
+                      >
+                        {isEvaluating ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                        Run Evaluation Now
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {crits.map((crit, index) => {
                       const pct = (crit.ai_marks / crit.max_marks) * 100;
                       return (
                         <div
@@ -319,7 +282,8 @@ export function ScoreBreakdownModal({ team, isOpen, onClose }: Props) {
                         </div>
                       );
                     })}
-                  </div>
+                    </div>
+                  )}
                 </TabsContent>
               );
             })}

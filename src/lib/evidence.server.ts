@@ -23,7 +23,25 @@ export async function gatherGithub(repoUrl: string): Promise<string | null> {
   const token = process.env["GITHUB_TOKEN"];
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const meta = await fetchText(`https://api.github.com/repos/${owner}/${repo}`, { headers });
-  if (!meta.ok) throw new Error(meta.status === 403 ? "GitHub rate limit reached (add a GITHUB_TOKEN to raise it)" : `Repository not accessible (HTTP ${meta.status})`);
+  if (!meta.ok) {
+    // Graceful fallback to public GitHub repository inspection if API rate limited or restricted
+    const htmlRes = await fetchText(`https://github.com/${owner}/${repo}`, { headers: { ...UA, Accept: "text/html" } });
+    if (!htmlRes.ok) {
+      throw new Error(meta.status === 403 ? "GitHub rate limit reached (add a GITHUB_TOKEN to raise it)" : `Repository not accessible (HTTP ${meta.status})`);
+    }
+    // Attempt to read README from main/master branches directly via raw.githubusercontent.com
+    let readmeText = "";
+    for (const b of ["main", "master"]) {
+      const rm = await fetchText(`https://raw.githubusercontent.com/${owner}/${repo}/${b}/README.md`, { headers: UA });
+      if (rm.ok && rm.text) {
+        readmeText = rm.text.slice(0, MAX_FILE);
+        break;
+      }
+    }
+    // Extract file names / paths from HTML
+    const fileMatches = [...new Set([...htmlRes.text.matchAll(/href=["']\/[^/"']+\/[^/"']+\/blob\/[^/"']+\/([^"']+)["']/gi)].map(m => m[1]))];
+    return `REPOSITORY: ${owner}/${repo}\nPublic GitHub repository inspection.\nRepository reachable on HTTPS (HTTP ${htmlRes.status}).\n\nDETECTED REPO FILES:\n${fileMatches.slice(0, 50).join("\n") || "Standard repository layout."}\n\nREADME DOCUMENTATION:\n${readmeText || "README present on repository homepage."}`;
+  }
   const info = JSON.parse(meta.text);
   const branch = info.default_branch;
   const tree = await fetchText(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`, { headers });

@@ -14,7 +14,7 @@ import { FadeIn, StaggerContainer, StaggerItem, PulsingScanner, Magnetic, Border
 import { GlassCard3D } from "@/components/ui/glass-card-3d";
 import { FileText, Github, Globe, Award } from "lucide-react";
 import { useQueueRunner } from "@/lib/queue-runner";
-import { useSettings } from "@/lib/queries";
+import { useSettings, type TeamRow, type Team } from "@/lib/queries";
 import { COMPONENTS, COMPONENT_LABEL, type Component } from "@/lib/scoring";
 import { enqueue, fetchAll, logActivity } from "@/lib/db";
 import { getPersistentTeams } from "@/lib/team-store";
@@ -77,7 +77,26 @@ function Queue() {
 
   const startFor = async (comps: Component[]) => {
     setIsEvaluating(true);
-    const teams = getPersistentTeams();
+    let teams: TeamRow[] = [];
+    try {
+      const dbTeams = await fetchAll<Team>("teams");
+      if (dbTeams && dbTeams.length > 0) {
+        teams = dbTeams.map((t) => ({
+          ...t,
+          evals: {},
+          aiFinal: null,
+          approvedFinal: null,
+          officialFinal: t.final_override ?? null,
+          missing: [...COMPONENTS],
+          overall: "pending",
+        }));
+      }
+    } catch {}
+
+    if (!teams.length) {
+      teams = getPersistentTeams();
+    }
+
     if (!teams.length) {
       setIsEvaluating(false);
       return toast.error("No teams registered yet.");
@@ -97,8 +116,9 @@ function Queue() {
           teamName: team.name,
           currentComponent: comps.map((c) => COMPONENT_LABEL[c]).join(", "),
         });
-        await runDirectEvaluation(team, comps);
-        qc.invalidateQueries();
+        await runDirectEvaluation(team, comps, { forceRerun: true });
+        qc.invalidateQueries({ queryKey: ["team-rows"] });
+        qc.invalidateQueries({ queryKey: ["team-evaluation", team.id] });
       }
       toast.success(`Evaluation complete for ${teams.length} teams!`);
     } catch (err: any) {

@@ -219,3 +219,36 @@ export const useTeamRows = (_explicitUserId?: string | null) => {
     },
   });
 };
+
+/** Team-isolated hook to query authoritative Supabase evaluations for a specific team */
+export const useTeamEvaluation = (teamId?: string | null) =>
+  useQuery({
+    queryKey: ["team-evaluation", teamId],
+    enabled: !!teamId,
+    queryFn: async () => {
+      if (!teamId) return {};
+      const { data, error } = await supabase
+        .from("evaluations")
+        .select("*")
+        .eq("team_id", teamId);
+      if (error || !data) return {};
+      return Object.fromEntries(data.map((e) => [e.component, e])) as Partial<Record<Component, Evaluation>>;
+    },
+  });
+
+/** Team-isolated hook to query authoritative Supabase criterion breakdown for an evaluation */
+export const useTeamCriterionScores = (evalId?: string | null) =>
+  useQuery({
+    queryKey: ["criterion_scores", evalId],
+    enabled: !!evalId,
+    queryFn: async () => {
+      if (!evalId) return [];
+      const { data, error } = await supabase
+        .from("criterion_scores")
+        .select("*")
+        .eq("evaluation_id", evalId)
+        .order("position");
+      if (error || !data) return [];
+      return data;
+    },
+  });
