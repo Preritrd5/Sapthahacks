@@ -89,10 +89,12 @@ function ImportPage() {
   const [showPdfSection, setShowPdfSection] = useState(false);
   const [pdfs, setPdfs] = useState<File[]>([]);
   const [uploadSummary, setUploadSummary] = useState<{
+    totalInFile: number;
     totalSelected: number;
     imported: number;
     skipped: number;
     failed: number;
+    skippedItems: { rowNumber: number; name: string; reason: string }[];
     errors: string[];
   } | null>(null);
 
@@ -373,6 +375,7 @@ function ImportPage() {
       const id = crypto.randomUUID();
       let path = "";
       let text = "";
+      const stubPath = `${id}/pitch-deck.pdf`;
 
       // 1. Determine PDF path and text
       if (file) {
@@ -397,18 +400,14 @@ function ImportPage() {
         } catch {
           text = `Local PDF presentation for ${r.name}.\nProject: ${r.project_title}\nDescription: ${r.project_description}`;
         }
-      } else if (r.pdf_url) {
-        path = r.pdf_url;
-        text = `Pitch Deck Google Drive Link: ${r.pdf_url}\nProject Title: ${r.project_title}\nProblem Description: ${r.project_description}`;
       } else {
-        path = `${id}/pitch-deck.pdf`;
-        text = `Pitch Deck presentation pending submission for team ${r.name}.\nProject Title: ${r.project_title}\nProblem Description: ${r.project_description}`;
-      }
+        // Upload stub PDF pointer to ensure database check constraint & trigger are satisfied
+        path = stubPath;
+        text = r.pdf_url
+          ? `Pitch Deck Google Drive Link: ${r.pdf_url}\nProject Title: ${r.project_title}\nProblem Description: ${r.project_description}`
+          : `Pitch Deck presentation pending submission for team ${r.name}.\nProject Title: ${r.project_title}\nProblem Description: ${r.project_description}`;
 
-      // 2. Proactively upload a small stub PDF pointer if path is not a stored file
-      if (!file) {
         try {
-          const stubPath = `${id}/pitch-deck.pdf`;
           const stubBlob = new Blob(
             [`%PDF-1.4\n%INNOVEDGE Hackathon Pitch Deck Pointer\n${r.pdf_url || "Pitch deck pending submission."}\n%%EOF`],
             { type: "application/pdf" }
@@ -421,7 +420,7 @@ function ImportPage() {
         }
       }
 
-      // 3. Encode college, track, problem statement, AND custom metadata in remarks
+      // 2. Encode college, track, problem statement, AND custom metadata in remarks
       const customMetadataStr =
         Object.keys(r.customMetadata).length > 0 ? `Custom: ${JSON.stringify(r.customMetadata)}` : "";
 
@@ -434,7 +433,7 @@ function ImportPage() {
         .filter(Boolean)
         .join(" | ");
 
-      // 4. Save to persistent team store so data is immediately visible across tabs
+      // 3. Save to persistent team store so data is immediately visible across tabs
       upsertPersistentTeam({
         id,
         name: r.name,
@@ -468,7 +467,7 @@ function ImportPage() {
         savePersistentMembers(id, r.members);
       }
 
-      // 5. Insert into Supabase teams and team_members tables
+      // 4. Insert into Supabase teams and team_members tables
       try {
         const payload = {
           name: r.name,
@@ -485,11 +484,16 @@ function ImportPage() {
 
         let { data, error } = await supabase.from("teams").insert(payload).select("id").single();
 
-        // If Postgres trigger rejected because pdf_path is an external link, fallback to stub path
+        // If Postgres trigger rejected because of PDF path format, ensure stub is active
         if (error && error.message?.toLowerCase().includes("project pdf no larger than 3 mb is required")) {
-          payload.pdf_path = `${id}/pitch-deck.pdf`;
+          payload.pdf_path = stubPath;
           const retry = await supabase.from("teams").insert(payload).select("id").single();
           data = retry.data;
+          error = retry.error;
+        }
+
+        if (error) {
+          throw error;
         }
 
         if (data && r.members.length) {
@@ -510,23 +514,41 @@ function ImportPage() {
       }
     }
 
+    // Build comprehensive reconciliation of all rows in the sheet
+    const skippedItems: { rowNumber: number; name: string; reason: string }[] = [];
+    rows.forEach((r) => {
+      if (!selectedRowIds.has(r.id)) {
+        skippedItems.push({ rowNumber: r.rowIndex, name: r.name, reason: "Unselected by administrator" });
+      } else if (!r.isValid) {
+        skippedItems.push({ rowNumber: r.rowIndex, name: r.name, reason: r.issues.join("; ") || "Validation failure" });
+      } else if (r.duplicateInSheet) {
+        skippedItems.push({ rowNumber: r.rowIndex, name: r.name, reason: "Duplicate team name in spreadsheet" });
+      } else if (r.alreadyInDb) {
+        skippedItems.push({ rowNumber: r.rowIndex, name: r.name, reason: "Already registered in platform database" });
+      }
+    });
+
     await logActivity("Selective Excel import", `${importedCount} team(s) imported successfully`);
     setBusy(false);
 
     setUploadSummary({
+      totalInFile: rows.length,
       totalSelected: selectedRowIds.size,
       imported: importedCount,
-      skipped: selectedInvalidCount,
+      skipped: skippedItems.length,
       failed: failedCount,
+      skippedItems,
       errors,
     });
 
     qc.invalidateQueries();
 
-    if (failedCount === 0) {
-      toast.success(`Successfully imported ${importedCount} team(s) from Excel.`);
+    if (failedCount === 0 && skippedItems.length === 0) {
+      toast.success(`Successfully imported all ${importedCount} team(s) from Excel.`);
+    } else if (failedCount === 0) {
+      toast.info(`Imported ${importedCount} team(s). ${skippedItems.length} row(s) were skipped or unselected.`);
     } else {
-      toast.warning(`Imported ${importedCount} team(s), with ${failedCount} failure(s).`);
+      toast.warning(`Imported ${importedCount} team(s), with ${failedCount} database failure(s).`);
     }
   };
 
@@ -725,33 +747,92 @@ function ImportPage() {
 
           {/* Upload Results Summary Banner (if completed) */}
           {uploadSummary && (
-            <div className="rounded-2xl border border-primary/40 bg-primary/10 p-4 shadow-sm backdrop-blur-md">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="size-5 text-emerald-500 shrink-0" />
+            <div className="rounded-2xl border border-primary/40 bg-card p-5 shadow-sm backdrop-blur-md space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/40">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl ${uploadSummary.failed > 0 || uploadSummary.skipped > 0 ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}>
+                    <CheckCircle2 className="size-5 shrink-0" />
+                  </div>
                   <div>
-                    <h4 className="font-semibold text-foreground text-sm">
-                      Bulk Import Execution Complete
+                    <h4 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                      Bulk Import Reconciliation Report
+                      <Badge variant={uploadSummary.failed > 0 ? "destructive" : uploadSummary.skipped > 0 ? "secondary" : "default"} className="text-[11px] font-mono">
+                        {uploadSummary.imported} of {uploadSummary.totalInFile} Imported
+                      </Badge>
                     </h4>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Successfully imported <strong className="text-emerald-500">{uploadSummary.imported}</strong> team(s).
-                      {uploadSummary.skipped > 0 && ` Skipped ${uploadSummary.skipped} invalid row(s).`}
-                      {uploadSummary.failed > 0 && ` Failed: ${uploadSummary.failed}.`}
+                      Full row-by-row reconciliation across database insertion and validation pipeline.
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to="/teams">View Teams &rarr;</Link>
+                  <Button variant="default" size="sm" asChild>
+                    <Link to="/teams">View Teams ({uploadSummary.imported}) &rarr;</Link>
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setUploadSummary(null)}>
                     Dismiss
                   </Button>
                 </div>
               </div>
+
+              {/* Status Metric Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl bg-muted/30 border border-border/40">
+                  <div className="text-[11px] text-muted-foreground font-medium">Total Rows in Sheet</div>
+                  <div className="text-lg font-bold text-foreground mt-0.5">{uploadSummary.totalInFile}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Successfully Imported</div>
+                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{uploadSummary.imported}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">Skipped / Excluded</div>
+                  <div className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5">{uploadSummary.skipped}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                  <div className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">Database Failures</div>
+                  <div className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-0.5">{uploadSummary.failed}</div>
+                </div>
+              </div>
+
+              {/* Skipped Items Detailed Breakdown (if any) */}
+              {uploadSummary.skippedItems.length > 0 && (
+                <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-2">
+                  <div className="flex items-center justify-between font-semibold text-foreground">
+                    <span>Skipped Rows Breakdown ({uploadSummary.skippedItems.length}):</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px] px-2 text-primary"
+                      onClick={() => {
+                        const skippedRowIds = new Set(
+                          rows
+                            .filter((r) => uploadSummary.skippedItems.some((s) => s.rowNumber === r.rowIndex))
+                            .map((r) => r.id)
+                        );
+                        setSelectedRowIds(skippedRowIds);
+                        setStatusFilter("all");
+                      }}
+                    >
+                      Select Only Skipped Rows
+                    </Button>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                    {uploadSummary.skippedItems.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-background/60 border border-border/40">
+                        <span className="font-mono text-muted-foreground font-semibold">Row {item.rowNumber}</span>
+                        <span className="font-medium text-foreground truncate max-w-[200px]">{item.name}</span>
+                        <span className="text-muted-foreground text-[11px] text-right truncate max-w-[300px]">{item.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Database Insertion Errors (if any) */}
               {uploadSummary.errors.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-border/40 text-xs text-rose-600 space-y-1">
-                  <strong>Errors encountered:</strong>
+                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-400 space-y-1">
+                  <strong>Database Insertion Exceptions ({uploadSummary.errors.length}):</strong>
                   {uploadSummary.errors.map((err, i) => (
                     <div key={i}>• {err}</div>
                   ))}

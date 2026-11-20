@@ -409,7 +409,27 @@ export function createDefaultColumnMapping(detectedHeaders: string[]): ColumnMap
   const state: ColumnMappingState = {};
   const mappedTargets = new Set<PortalFieldId>();
 
-  for (const header of detectedHeaders) {
+  // Sort headers so specific, authoritative columns (like 'Team Name', 'Lead email') take mapping priority
+  const prioritizedHeaders = [...detectedHeaders].sort((a, b) => {
+    const normA = normalizeHeaderKey(a);
+    const normB = normalizeHeaderKey(b);
+    
+    // 'teamname' or exact 'team' beats 'teamcode' or 'code' for the team name
+    const isSpecificTeamA = normA === "teamname" || normA === "groupname";
+    const isSpecificTeamB = normB === "teamname" || normB === "groupname";
+    if (isSpecificTeamA && !isSpecificTeamB) return -1;
+    if (!isSpecificTeamA && isSpecificTeamB) return 1;
+
+    // 'team' beats 'teamcode'
+    const isTeamA = normA === "team";
+    const isTeamB = normB === "team";
+    if (isTeamA && !isTeamB) return -1;
+    if (!isTeamA && isTeamB) return 1;
+
+    return 0;
+  });
+
+  for (const header of prioritizedHeaders) {
     const detected = detectFieldForHeader(header);
     // Don't auto-assign the same non-metadata field twice
     let target = detected;
@@ -546,6 +566,46 @@ export const sanitizeUrl = (raw: string, fallback = ""): string => {
   return val;
 };
 
+/**
+ * Sanitizes and normalizes GitHub repository URLs to satisfy platform & DB constraints.
+ * Converts GitHub Pages (https://user.github.io/repo) to repository URLs (https://github.com/user/repo).
+ * Provides a resilient fallback repository for non-GitHub URLs so database insertion never fails.
+ */
+export const sanitizeGithubUrl = (raw: string, fallbackSlug = ""): string => {
+  let val = raw.replace(/[\u200B-\u200D\uFEFF\u2060]/g, "").trim();
+  if (!val) {
+    return fallbackSlug ? `https://github.com/hackathon-submissions/${fallbackSlug}` : "";
+  }
+
+  // 1. Strip deep links (/blob/..., /tree/...) so it points to repository root
+  const blobTreeMatch = val.match(/^https?:\/\/(www\.)?github\.com\/([^/]+)\/([^/?#]+)(\/(blob|tree)\/.*)?$/i);
+  if (blobTreeMatch && blobTreeMatch[2] && blobTreeMatch[3]) {
+    const repo = blobTreeMatch[3].replace(/\.git$/i, "").replace(/\/$/, "");
+    return `https://github.com/${blobTreeMatch[2]}/${repo}`;
+  }
+
+  // 2. Convert GitHub Pages: https://username.github.io/repo[/] -> https://github.com/username/repo
+  const ghPagesMatch = val.match(/^https?:\/\/([a-zA-Z0-9-]+)\.github\.io\/([^/?#]+)/i);
+  if (ghPagesMatch && ghPagesMatch[1] && ghPagesMatch[2]) {
+    const user = ghPagesMatch[1];
+    const repo = ghPagesMatch[2].replace(/\.git$/i, "").replace(/\/$/, "");
+    return `https://github.com/${user}/${repo}`;
+  }
+
+  // 3. Standard GitHub URL format (ensuring clean owner/repo root)
+  const ghRootMatch = val.match(/^https?:\/\/(www\.)?github\.com\/([^/]+)\/([^/?#]+)/i);
+  if (ghRootMatch && ghRootMatch[2] && ghRootMatch[3]) {
+    const repo = ghRootMatch[3].replace(/\.git$/i, "").replace(/\/$/, "");
+    return `https://github.com/${ghRootMatch[2]}/${repo}`;
+  }
+
+  // 4. Fallback repository URL if participant provided an external deployment link in GitHub field
+  if (fallbackSlug) {
+    return `https://github.com/hackathon-submissions/${fallbackSlug}`;
+  }
+  return val;
+};
+
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
@@ -585,7 +645,7 @@ export function parseRowsWithMapping(
     const firstCustomHeader = customHeaders[0];
     const firstCustomVal = firstCustomHeader ? r[firstCustomHeader]?.trim() : "";
     const rawProjectTitle = getValue("project_title");
-    const teamName = rawTeamName || rawProjectTitle || firstCustomVal || `Team ${idx + 1}`;
+    let teamName = rawTeamName || rawProjectTitle || firstCustomVal || `Team ${idx + 1}`;
 
     const safeSlug = teamName.toLowerCase().replace(/[^a-z0-9]/g, "") || `team${idx + 1}`;
 
@@ -605,14 +665,17 @@ export function parseRowsWithMapping(
     const track = getValue("track");
 
     const rawGithub = getValue("github_url");
-    const github_url = rawGithub
-      ? sanitizeUrl(rawGithub)
-      : `https://github.com/hackathon-submissions/${safeSlug}`;
+    const github_url = sanitizeGithubUrl(rawGithub, safeSlug);
 
     let rawWebsite = getValue("website_url");
     let website_url = rawWebsite
       ? sanitizeUrl(rawWebsite)
-      : (github_url || `https://${safeSlug}.demo.app`);
+      : (rawGithub && !rawGithub.includes("github.com")
+          ? sanitizeUrl(rawGithub)
+          : (github_url || `https://${safeSlug}.demo.app`));
+    if (!website_url || !/^https?:\/\//i.test(website_url)) {
+      website_url = github_url || `https://${safeSlug}.demo.app`;
+    }
 
     const rawPdf = getValue("pdf_url");
     const pdf_url = rawPdf ? sanitizeUrl(rawPdf) : "";
@@ -676,6 +739,11 @@ export function parseRowsWithMapping(
       }
     }
 
+    // Preserve original link if sanitized to a fallback repository
+    if (rawGithub && rawGithub !== github_url && !customMetadata["Original Link"]) {
+      customMetadata["Original Link"] = rawGithub;
+    }
+
     // Validation rules (all fields optional with smart defaults; only fatal empty name or format errors flag)
     if (!teamName || !teamName.trim()) {
       issues.push("Missing team identifier");
@@ -684,8 +752,26 @@ export function parseRowsWithMapping(
       issues.push(`Invalid team email format (${rawEmail})`);
     }
 
-    // Duplicate checks
-    const nameKey = teamName.toLowerCase().trim();
+    // Duplicate checks & intelligent disambiguation for distinct submissions
+    let nameKey = teamName.toLowerCase().trim();
+    if (nameKey && seenNames.has(nameKey)) {
+      // Disambiguate if this row has a secondary team label or distinct team code
+      const secondaryTeamKey = Object.keys(r).find(
+        (k) => normalizeHeaderKey(k) === "team" && r[k] && r[k].trim() !== teamName
+      );
+      const codeKey = Object.keys(r).find((k) => normalizeHeaderKey(k) === "teamcode" && r[k]);
+      const secondaryVal = secondaryTeamKey ? r[secondaryTeamKey]?.trim() : "";
+      const codeVal = codeKey ? r[codeKey]?.trim() : "";
+
+      if (secondaryVal && !seenNames.has(secondaryVal.toLowerCase().trim())) {
+        teamName = secondaryVal;
+        nameKey = teamName.toLowerCase().trim();
+      } else if (codeVal && !teamName.includes(codeVal)) {
+        teamName = `${teamName} (${codeVal})`;
+        nameKey = teamName.toLowerCase().trim();
+      }
+    }
+
     const duplicateInSheet = nameKey ? seenNames.has(nameKey) : false;
     if (nameKey) seenNames.add(nameKey);
 
