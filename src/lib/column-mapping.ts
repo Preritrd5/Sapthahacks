@@ -37,20 +37,39 @@ export interface PortalFieldDef {
 }
 
 export const PORTAL_FIELDS: PortalFieldDef[] = [
-  // 1. Core Fields
+  // 1. Core Fields (All optional with intelligent defaults)
   {
     id: "name",
-    label: "Team Name",
+    label: "Team Name / Code",
     category: "core",
-    required: true,
-    description: "Official competitive team identifier",
-    aliases: ["teamname", "team", "name", "groupname", "teamtitle"],
+    required: false,
+    description: "Official competitive team identifier or team code",
+    aliases: [
+      "teamname",
+      "team",
+      "name",
+      "groupname",
+      "teamtitle",
+      "teamcode",
+      "team_code",
+      "code",
+      "teamid",
+      "team_id",
+      "squad",
+      "teamnumber",
+      "teamno",
+      "participant",
+      "participants",
+      "handle",
+      "projectcode",
+      "submissionid",
+    ],
   },
   {
     id: "project_title",
     label: "Project Title",
     category: "core",
-    required: true,
+    required: false,
     description: "Name of the hackathon solution or project",
     aliases: ["projecttitle", "title", "project", "projectname", "submissiontitle"],
   },
@@ -58,7 +77,7 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     id: "project_description",
     label: "Project Description",
     category: "core",
-    required: true,
+    required: false,
     description: "Detailed summary, problem alignment & solution architecture",
     aliases: ["projectdescription", "description", "details", "problemdescription", "abstract", "summary"],
   },
@@ -66,7 +85,7 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     id: "email",
     label: "Team / Contact Email",
     category: "core",
-    required: true,
+    required: false,
     description: "Primary contact email address for the team",
     aliases: ["teamemail", "email", "contactemail", "leaderemail", "leademail", "primaryemail"],
   },
@@ -95,12 +114,12 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     aliases: ["problemstatement", "problem", "ps", "pscode", "challenge", "challengeid", "psid"],
   },
 
-  // 2. Links & Artifacts
+  // 2. Links & Artifacts (All optional)
   {
     id: "github_url",
     label: "GitHub Repository URL",
     category: "links",
-    required: true,
+    required: false,
     description: "Public source code repository for automated code inspection",
     aliases: ["githuburl", "github", "repository", "repo", "git", "gitrepo", "githublink"],
   },
@@ -133,12 +152,12 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     ],
   },
 
-  // 3. Team Members (1–4)
+  // 3. Team Members (Slots 1–4, all 100% optional)
   {
     id: "member_1_name",
-    label: "Member 1 Name (Team Lead)",
+    label: "Member 1 Name (Lead)",
     category: "members",
-    required: true,
+    required: false,
     description: "Primary student coordinator / team leader name",
     aliases: [
       "member1name",
@@ -174,7 +193,7 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     id: "member_2_name",
     label: "Member 2 Name",
     category: "members",
-    required: true,
+    required: false,
     description: "Second team member name",
     aliases: [
       "member2name",
@@ -204,7 +223,7 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
   },
   {
     id: "member_3_name",
-    label: "Member 3 Name (Optional)",
+    label: "Member 3 Name",
     category: "members",
     required: false,
     description: "Third team member name",
@@ -223,7 +242,7 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
   },
   {
     id: "member_3_email",
-    label: "Member 3 Email (Optional)",
+    label: "Member 3 Email",
     category: "members",
     required: false,
     description: "Third team member email",
@@ -239,7 +258,7 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
   },
   {
     id: "member_4_name",
-    label: "Member 4 Name (Optional)",
+    label: "Member 4 Name",
     category: "members",
     required: false,
     description: "Fourth team member name",
@@ -258,7 +277,7 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
   },
   {
     id: "member_4_email",
-    label: "Member 4 Email (Optional)",
+    label: "Member 4 Email",
     category: "members",
     required: false,
     description: "Fourth team member email",
@@ -280,7 +299,7 @@ export const PORTAL_FIELDS: PortalFieldDef[] = [
     category: "special",
     required: false,
     description: "Preserve column value as structured custom metadata in team remarks",
-    aliases: ["remarks", "notes", "comments", "batch", "section", "semester", "year"],
+    aliases: ["remarks", "notes", "comments", "batch", "section", "semester", "year", "score"],
   },
   {
     id: "ignore",
@@ -334,7 +353,18 @@ export function detectFieldForHeader(header: string): PortalFieldId {
   if (/member.*4/i.test(header) || /4.*member/i.test(header)) return "member_4_name";
 
   // Secondary substring / keyword matching for common variations
-  if (norm.includes("teamname") || norm === "team") return "name";
+  if (
+    norm.includes("teamname") ||
+    norm === "team" ||
+    norm.includes("teamcode") ||
+    norm === "code" ||
+    norm.includes("teamid") ||
+    norm.includes("groupname") ||
+    norm === "group" ||
+    norm === "squad"
+  ) {
+    return "name";
+  }
   if (norm.includes("projecttitle") || norm === "title") return "project_title";
   if (norm.includes("projectdesc") || norm.includes("description")) return "project_description";
   if (norm.includes("college") || norm.includes("institute") || norm.includes("university")) return "college";
@@ -343,9 +373,10 @@ export function detectFieldForHeader(header: string): PortalFieldId {
   if (norm.includes("pitchdeck") || norm.includes("drivelink") || (norm.includes("pdf") && norm.includes("link"))) return "pdf_url";
   if (norm.includes("track") || norm.includes("domain")) return "track";
   if (norm.includes("problem") || norm.includes("pscode")) return "problem_statement";
+  if (norm.includes("score") || norm.includes("mark") || norm.includes("grade") || norm.includes("point")) return "custom_metadata";
 
   // Ignore timestamps and internal IDs by default
-  if (norm === "timestamp" || norm === "sno" || norm === "serialnumber" || norm === "id") {
+  if (norm === "timestamp" || norm === "sno" || norm === "serialnumber" || norm === "serial" || norm === "id") {
     return "ignore";
   }
 
@@ -448,7 +479,7 @@ export function validateColumnMapping(mapping: ColumnMappingState): {
     }
   }
 
-  // Check missing mandatory fields
+  // Check missing mandatory fields (all portal fields are optional)
   const missingRequiredFields = REQUIRED_PORTAL_FIELDS.filter(
     (req) => !targetToHeaders.has(req.id)
   );
@@ -466,7 +497,8 @@ export function validateColumnMapping(mapping: ColumnMappingState): {
     }
   }
 
-  const isValid = missingRequiredFields.length === 0 && duplicateFieldMappings.length === 0;
+  // Valid as long as there are no duplicate mappings and at least one column is selected
+  const isValid = missingRequiredFields.length === 0 && duplicateFieldMappings.length === 0 && selectedColumnCount > 0;
 
   return {
     isValid,
@@ -549,22 +581,38 @@ export function parseRowsWithMapping(
       return header && r[header] != null ? String(r[header]).trim() : "";
     };
 
-    const teamName = getValue("name");
-    const teamEmail = getValue("email");
-    const projectTitle = getValue("project_title");
-    const projectDesc = getValue("project_description");
+    const rawTeamName = getValue("name");
+    const firstCustomHeader = customHeaders[0];
+    const firstCustomVal = firstCustomHeader ? r[firstCustomHeader]?.trim() : "";
+    const rawProjectTitle = getValue("project_title");
+    const teamName = rawTeamName || rawProjectTitle || firstCustomVal || `Team ${idx + 1}`;
+
+    const safeSlug = teamName.toLowerCase().replace(/[^a-z0-9]/g, "") || `team${idx + 1}`;
+
+    const rawEmail = getValue("email");
+    let teamEmail = rawEmail;
+    if (!teamEmail) {
+      teamEmail = `${safeSlug}@hackathon.portal`;
+    }
+
+    const problem_statement = getValue("problem_statement");
+    const projectTitle = rawProjectTitle || (problem_statement ? `[${problem_statement}] Solution` : `${teamName} Solution`);
+
+    const rawProjectDesc = getValue("project_description");
+    const projectDesc = rawProjectDesc || `Hackathon project proposal and prototype submission for ${teamName}.`;
+
     const college = getValue("college");
     const track = getValue("track");
-    const problem_statement = getValue("problem_statement");
-    const rawGithub = getValue("github_url");
-    const github_url = sanitizeUrl(rawGithub);
-    let rawWebsite = getValue("website_url");
-    let website_url = sanitizeUrl(rawWebsite);
 
-    // If website URL was not mapped/provided, fallback to github_url if available
-    if (!website_url && github_url) {
-      website_url = github_url;
-    }
+    const rawGithub = getValue("github_url");
+    const github_url = rawGithub
+      ? sanitizeUrl(rawGithub)
+      : `https://github.com/hackathon-submissions/${safeSlug}`;
+
+    let rawWebsite = getValue("website_url");
+    let website_url = rawWebsite
+      ? sanitizeUrl(rawWebsite)
+      : (github_url || `https://${safeSlug}.demo.app`);
 
     const rawPdf = getValue("pdf_url");
     const pdf_url = rawPdf ? sanitizeUrl(rawPdf) : "";
@@ -573,27 +621,27 @@ export function parseRowsWithMapping(
     const members: ParsedTeamMember[] = [];
     const memberEmails: string[] = [];
 
-    // Extract all 4 member slots
+    // Extract all 4 member slots (all 100% optional, supporting 0 to 4 members)
     for (let i = 1; i <= 4; i++) {
       const nameKey: PortalFieldId = `member_${i}_name` as PortalFieldId;
       const emailKey: PortalFieldId = `member_${i}_email` as PortalFieldId;
 
-      const mName = getValue(nameKey);
-      const mEmail = getValue(emailKey);
+      let mName = getValue(nameKey);
+      let mEmail = getValue(emailKey);
 
-      // Incomplete member check: email provided without name
+      // If email provided without name, deduce member name from email handle
       if (!mName && mEmail) {
-        issues.push(`Member ${i} email provided (${mEmail}) but Member ${i} name is missing`);
+        mName = mEmail.split("@")[0] || `Member ${i}`;
       }
 
       if (mName) {
         if (mEmail) {
           if (!EMAIL_REGEX.test(mEmail)) {
-            issues.push(`Member ${i} (${mName}) has an invalid email format (${mEmail})`);
+            mEmail = "";
           } else {
             const emailLower = mEmail.toLowerCase().trim();
             if (memberEmails.includes(emailLower)) {
-              issues.push(`Duplicate member email (${mEmail}) used multiple times within the team`);
+              issues.push(`Duplicate member email (${mEmail}) used multiple times within team ${teamName}`);
             } else {
               memberEmails.push(emailLower);
             }
@@ -628,37 +676,12 @@ export function parseRowsWithMapping(
       }
     }
 
-    // Validation rules
-    if (!teamName) issues.push("Missing team name");
-    if (!teamEmail) {
-      issues.push("Missing team email");
-    } else if (!EMAIL_REGEX.test(teamEmail)) {
-      issues.push("Invalid team email format");
+    // Validation rules (all fields optional with smart defaults; only fatal empty name or format errors flag)
+    if (!teamName || !teamName.trim()) {
+      issues.push("Missing team identifier");
     }
-
-    if (!projectTitle) issues.push("Missing project title");
-    if (!projectDesc) issues.push("Missing project description");
-
-    if (!github_url) {
-      issues.push("Missing GitHub URL");
-    } else if (!/^https?:\/\/(www\.)?github\.com\//i.test(github_url)) {
-      issues.push("Invalid GitHub URL (must start with https://github.com/)");
-    }
-
-    if (!website_url) {
-      issues.push("Missing website URL");
-    } else if (!/^https?:\/\//i.test(website_url)) {
-      issues.push("Invalid website URL");
-    }
-
-    // Member 1 (Lead) is required
-    if (!members.length) {
-      issues.push("Member 1 (Lead) is required");
-    }
-
-    // Member 2 is required if Member 2 Name column was selected in mapping
-    if (selectedPortalFields.has("member_2_name") && members.length < 2) {
-      issues.push("Member 2 Name is required");
+    if (rawEmail && !EMAIL_REGEX.test(rawEmail) && (!rawEmail.includes("@") || rawEmail.includes(" "))) {
+      issues.push(`Invalid team email format (${rawEmail})`);
     }
 
     // Duplicate checks

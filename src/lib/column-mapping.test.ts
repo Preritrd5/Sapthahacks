@@ -88,47 +88,40 @@ describe("Dynamic Column Mapping & Selection Engine", () => {
     expect(mapping["Custom Department Name"]?.selected).toBe(true);
   });
 
-  it("validates required portal fields and identifies missing mandatory mappings", () => {
-    // Incomplete mapping missing Member 2 Name and GitHub URL
-    const incompleteMapping: ColumnMappingState = {
+  it("allows flexible mappings where fields are optional and identifies duplicate mappings", () => {
+    // Incomplete mapping with only Team Name and custom metadata - 100% valid because all fields are optional
+    const partialMapping: ColumnMappingState = {
       "Team Name": { targetField: "name", selected: true },
-      "Team Email": { targetField: "email", selected: true },
-      "Project Title": { targetField: "project_title", selected: true },
-      "Project Description": { targetField: "project_description", selected: true },
-      "Member 1 Name": { targetField: "member_1_name", selected: true },
+      "Team Score": { targetField: "custom_metadata", selected: true },
     };
 
-    const incompleteVal = validateColumnMapping(incompleteMapping);
-    expect(incompleteVal.isValid).toBe(false);
-    expect(incompleteVal.missingRequiredFields.map((f) => f.id)).toContain("member_2_name");
-    expect(incompleteVal.missingRequiredFields.map((f) => f.id)).toContain("github_url");
+    const partialVal = validateColumnMapping(partialMapping);
+    expect(partialVal.isValid).toBe(true);
+    expect(partialVal.missingRequiredFields.length).toBe(0);
+    expect(partialVal.selectedColumnCount).toBe(2);
 
-    // Complete mapping satisfying all required portal fields
-    const completeMapping: ColumnMappingState = {
-      ...incompleteMapping,
+    // Complete mapping
+    const fullMapping: ColumnMappingState = {
+      ...partialMapping,
+      "Member 1 Name": { targetField: "member_1_name", selected: true },
       "Member 2 Name": { targetField: "member_2_name", selected: true },
       "GitHub Repo": { targetField: "github_url", selected: true },
     };
 
-    const completeVal = validateColumnMapping(completeMapping);
-    expect(completeVal.isValid).toBe(true);
-    expect(completeVal.missingRequiredFields.length).toBe(0);
+    const fullVal = validateColumnMapping(fullMapping);
+    expect(fullVal.isValid).toBe(true);
+    expect(fullVal.missingRequiredFields.length).toBe(0);
   });
 
-  it("deselected columns are treated as unmapped even if targetField is assigned", () => {
+  it("deselected columns are excluded and zero selected columns invalidates preview", () => {
     const mapping: ColumnMappingState = {
-      "Team Name": { targetField: "name", selected: false }, // Deselected!
-      "Team Email": { targetField: "email", selected: true },
-      "Project Title": { targetField: "project_title", selected: true },
-      "Project Description": { targetField: "project_description", selected: true },
-      "Member 1 Name": { targetField: "member_1_name", selected: true },
-      "Member 2 Name": { targetField: "member_2_name", selected: true },
-      "GitHub Repo": { targetField: "github_url", selected: true },
+      "Team Name": { targetField: "name", selected: false }, // All deselected!
+      "Team Email": { targetField: "email", selected: false },
     };
 
     const val = validateColumnMapping(mapping);
     expect(val.isValid).toBe(false);
-    expect(val.missingRequiredFields.map((f) => f.id)).toContain("name");
+    expect(val.selectedColumnCount).toBe(0);
   });
 
   it("parses spreadsheet rows strictly according to active column mapping and captures custom metadata", () => {
@@ -289,8 +282,8 @@ describe("Dynamic Column Mapping & Selection Engine", () => {
     expect(team.issues.length).toBe(0);
   });
 
-  it("flags incomplete member information when email is given without name", () => {
-    const incompleteMemberRow = [
+  it("gracefully deduces member name from email handle when name is omitted", () => {
+    const memberEmailOnlyRow = [
       {
         "Team Name": "Glitch Team",
         "Team Email": "glitch@example.com",
@@ -306,14 +299,39 @@ describe("Dynamic Column Mapping & Selection Engine", () => {
       },
     ];
 
-    const mapping = createDefaultColumnMapping(Object.keys(incompleteMemberRow[0]!));
-    const parsed = parseRowsWithMapping(incompleteMemberRow, mapping, []);
+    const mapping = createDefaultColumnMapping(Object.keys(memberEmailOnlyRow[0]!));
+    const parsed = parseRowsWithMapping(memberEmailOnlyRow, mapping, []);
 
     expect(parsed.length).toBe(1);
     const team = parsed[0]!;
-    expect(team.isValid).toBe(false);
-    expect(team.status).toBe("invalid");
-    expect(team.issues.some((issue) => issue.includes("Member 3 name is missing"))).toBe(true);
+    expect(team.isValid).toBe(true);
+    expect(team.status).toBe("ready");
+    expect(team.members.length).toBe(3);
+    expect(team.members[2]?.name).toBe("ghost-member3");
+  });
+
+  it("successfully parses minimal custom spreadsheets like 'Team code' and 'Score' without blocking", () => {
+    const minimalData = [
+      {
+        "Team code": "SB4Z48",
+        "Score (out of 100)": "88.5",
+      },
+    ];
+
+    const mapping = createDefaultColumnMapping(["Team code", "Score (out of 100)"]);
+    expect(mapping["Team code"]?.targetField).toBe("name");
+
+    const val = validateColumnMapping(mapping);
+    expect(val.isValid).toBe(true);
+    expect(val.missingRequiredFields.length).toBe(0);
+
+    const parsed = parseRowsWithMapping(minimalData, mapping, []);
+    expect(parsed.length).toBe(1);
+    const team = parsed[0]!;
+    expect(team.isValid).toBe(true);
+    expect(team.name).toBe("SB4Z48");
+    expect(team.customMetadata["Score (out of 100)"]).toBe("88.5");
+    expect(team.status).toBe("ready");
   });
 
   it("flags duplicate member emails within the same team", () => {

@@ -266,7 +266,7 @@ export function ExcelColumnMapper({
               </Badge>
             </div>
             <span className="text-[11px] text-muted-foreground font-mono">
-              Slots 1 &amp; 2 Mandatory · Slots 3 &amp; 4 Optional
+              All Slots Optional · Solo to 4-Member Teams Supported
             </span>
           </div>
 
@@ -274,40 +274,40 @@ export function ExcelColumnMapper({
             <div className="p-2.5 rounded-lg bg-background/80 border border-border/60">
               <div className="text-[10px] text-muted-foreground font-semibold uppercase">Slot 1</div>
               <div className="font-bold text-foreground text-xs flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 1 (Lead) *
+                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 1 (Lead)
               </div>
               <div className="text-[10px] text-muted-foreground truncate mt-0.5">
-                Mapped to Lead Name &amp; Email
+                Optional · Lead Name &amp; Email
               </div>
             </div>
 
             <div className="p-2.5 rounded-lg bg-background/80 border border-border/60">
               <div className="text-[10px] text-muted-foreground font-semibold uppercase">Slot 2</div>
               <div className="font-bold text-foreground text-xs flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 2 *
+                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 2
               </div>
               <div className="text-[10px] text-muted-foreground truncate mt-0.5">
-                Mapped to Member 2 Name &amp; Email
+                Optional · Member 2 Name &amp; Email
               </div>
             </div>
 
             <div className="p-2.5 rounded-lg bg-background/80 border border-border/60">
               <div className="text-[10px] text-muted-foreground font-semibold uppercase">Slot 3</div>
               <div className="font-bold text-foreground text-xs flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 3 (Optional)
+                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 3
               </div>
               <div className="text-[10px] text-muted-foreground truncate mt-0.5">
-                Ready for 3 or 4-member teams
+                Optional · Ready for 3 or 4-member teams
               </div>
             </div>
 
             <div className="p-2.5 rounded-lg bg-background/80 border border-border/60">
               <div className="text-[10px] text-muted-foreground font-semibold uppercase">Slot 4</div>
               <div className="font-bold text-foreground text-xs flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 4 (Optional)
+                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" /> Member 4
               </div>
               <div className="text-[10px] text-muted-foreground truncate mt-0.5">
-                Ready for 4-member teams
+                Optional · Ready for 4-member teams
               </div>
             </div>
           </div>
@@ -501,12 +501,18 @@ export function ExcelColumnMapper({
                       <Badge variant="destructive" className="text-[10px]">
                         Duplicate Mapping
                       </Badge>
-                    ) : item.targetField.startsWith("member_3_") || item.targetField.startsWith("member_4_") ? (
+                    ) : item.targetField.startsWith("member_") ? (
                       <Badge
                         variant="outline"
                         className="text-[10px] bg-primary/10 text-primary border-primary/30 font-semibold"
                       >
-                        Optional Roster
+                        {item.targetField.includes("1")
+                          ? "Slot 1 (Lead)"
+                          : item.targetField.includes("2")
+                          ? "Slot 2"
+                          : item.targetField.includes("3")
+                          ? "Slot 3"
+                          : "Slot 4"}
                       </Badge>
                     ) : item.targetField === "custom_metadata" ? (
                       <Badge

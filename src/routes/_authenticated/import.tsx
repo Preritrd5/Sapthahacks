@@ -144,7 +144,13 @@ function ImportPage() {
   const handleConfirmMapping = () => {
     const validation = validateColumnMapping(columnMapping);
     if (!validation.isValid) {
-      return toast.error("Please map all mandatory portal fields before proceeding.");
+      if (validation.duplicateFieldMappings.length > 0) {
+        return toast.error("Please resolve duplicate column mappings before proceeding.");
+      }
+      if (validation.selectedColumnCount === 0) {
+        return toast.error("Please select at least one spreadsheet column to import.");
+      }
+      return toast.error("Please review column mappings before proceeding.");
     }
 
     const parsed = parseRowsWithMapping(rawRecords, columnMapping, existingTeamsList);
